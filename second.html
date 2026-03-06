@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+  <title>Run-IQ | Parametric Rule Engine for Regulated Domains</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Mono:wght@400;500&family=Figtree:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
+    rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ink: "#0d0d0d",
+            paper: "#fafaf9",
+            muted: "#6b7280",
+            accent: "#1a1a1a",
+            rule: "#e5e5e0",
+          },
+          fontFamily: {
+            serif: ["Crimson Pro", "serif"],
+            sans: ["Figtree", "sans-serif"],
+            mono: ["DM Mono", "monospace"],
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #fafaf9;
+      color: #0d0d0d;
+      font-family: 'Figtree', sans-serif;
+    }
+
+    .ruled-bg {
+      background-image: repeating-linear-gradient(to bottom,
+          transparent,
+          transparent 31px,
+          #e8e8e3 31px,
+          #e8e8e3 32px);
+    }
+
+    .stamp {
+      display: inline-block;
+      border: 2px solid currentColor;
+      padding: 3px 10px;
+      text-transform: uppercase;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      font-size: 10px;
+      transform: rotate(-4deg);
+      font-family: 'DM Mono', monospace;
+    }
+
+    .nav-link {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: #6b7280;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .nav-link:hover {
+      color: #0d0d0d;
+    }
+
+    .btn-primary {
+      width: 272px;
+      padding: 16px 0;
+      background: #0d0d0d;
+      color: #fafaf9;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      border: 1px solid #0d0d0d;
+      cursor: pointer;
+      transition: background 0.2s;
+      font-family: 'Figtree', sans-serif;
+      display: block;
+      text-align: center;
+      text-decoration: none;
+    }
+
+    .btn-primary:hover {
+      background: #1f1f1f;
+    }
+
+    .btn-secondary {
+      width: 272px;
+      padding: 16px 0;
+      background: transparent;
+      color: #0d0d0d;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      border: 1px solid #0d0d0d;
+      cursor: pointer;
+      transition: background 0.2s;
+      font-family: 'Figtree', sans-serif;
+      display: block;
+      text-align: center;
+      text-decoration: none;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    /* Hero centered layout */
+    .hero-btns {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    /* Hero stats strip */
+    .hero-stats {
+      display: flex;
+      margin-top: 64px;
+      border: 1px solid #e5e5e0;
+      background: white;
+    }
+
+    .hero-stat {
+      flex: 1;
+      padding: 24px 20px;
+      text-align: center;
+      border-right: 1px solid #e5e5e0;
+    }
+
+    .hero-stat:last-child {
+      border-right: none;
+    }
+
+    .stat-val {
+      font-family: 'Crimson Pro', serif;
+      font-size: 28px;
+      font-weight: 700;
+      font-style: italic;
+    }
+
+    .stat-lbl {
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #6b7280;
+      margin-top: 5px;
+    }
+
+    /* Pipeline animation */
+    .pipeline-step {
+      opacity: 0;
+      transform: translateX(-8px);
+      transition: opacity 0.3s, transform 0.3s;
+    }
+
+    .pipeline-step.active {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .pipeline-step.done .step-dot {
+      background: #0d0d0d !important;
+    }
+
+    .pipeline-step.running .step-dot {
+      background: #0d0d0d !important;
+      animation: pulse 0.6s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.4;
+      }
+    }
+
+    .code-block {
+      background: #0d0d0d;
+      color: #e5e5e0;
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      line-height: 1.7;
+      padding: 24px;
+      overflow-x: auto;
+    }
+
+    .code-block .k {
+      color: #a5b4fc;
+    }
+
+    .code-block .s {
+      color: #86efac;
+    }
+
+    .code-block .n {
+      color: #fbbf24;
+    }
+
+    .code-block .c {
+      color: #6b7280;
+    }
+
+    .code-block .p {
+      color: #f472b6;
+    }
+
+    .tag {
+      display: inline-block;
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding: 2px 7px;
+      border: 1px solid currentColor;
+    }
+
+    .section-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.25em;
+      color: #9ca3af;
+    }
+
+    /* Input editing styles */
+    .editable-input {
+      background: #f8f8f6;
+      border: 1px solid #e5e5e0;
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      padding: 16px;
+      width: 100%;
+      resize: none;
+      outline: none;
+      transition: border-color 0.15s;
+      line-height: 1.6;
+    }
+
+    .editable-input:focus {
+      border-color: #0d0d0d;
+    }
+
+    /* Guarantee cards */
+    .guarantee-card {
+      border: 1px solid #e5e5e0;
+      padding: 24px;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .guarantee-card:hover {
+      border-color: #0d0d0d;
+      box-shadow: 4px 4px 0 #0d0d0d;
+    }
+
+    /* Plugin cards */
+    .plugin-card {
+      border: 1px solid #e5e5e0;
+      padding: 20px 24px;
+      transition: all 0.15s;
+    }
+
+    .plugin-card:hover {
+      border-color: #0d0d0d;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    /* Footer */
+    footer {
+      background: #f4f4f1;
+      color: #0d0d0d;
+      border-top: 1px solid #e5e5e0;
+    }
+
+    .perf-bar {
+      height: 4px;
+      background: #0d0d0d;
+      transform-origin: left;
+      transform: scaleX(0);
+      transition: transform 1.2s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    .perf-bar.animate {
+      transform: scaleX(1);
+    }
+
+    /* Scroll reveal */
+    .reveal {
+      opacity: 0;
+      transform: translateY(16px);
+      transition: opacity 0.5s, transform 0.5s;
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    select.styled {
+      appearance: none;
+      background: #f8f8f6;
+      border: 1px solid #e5e5e0;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      padding: 8px 12px;
+      cursor: pointer;
+      outline: none;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- HEADER -->
+  <header
+    style="border-bottom: 1px solid #e5e5e0; position: sticky; top: 0; background: rgba(250,250,249,0.97); backdrop-filter: blur(8px); z-index: 50; padding: 20px 32px;">
+    <div style="max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span
+          style="font-family: 'Crimson Pro', serif; font-size: 22px; font-weight: 700; letter-spacing: -0.02em;">RUN-IQ</span>
+        <span class="tag" style="color: #6b7280;">v0.1.0-alpha</span>
+      </div>
+      <nav style="display: flex; gap: 36px; align-items: center;">
+        <a class="nav-link" href="#how-it-works">How it works</a>
+        <a class="nav-link" href="#plugins">Plugins</a>
+        <a class="nav-link" href="#performance">Performance</a>
+        <a class="nav-link" href="https://github.com/Run-IQ">GitHub</a>
+      </nav>
+
+      <div class="flex gap-4">
+        <a href="https://github.com/Run-IQ"
+          class="text-decoration: none; text-xs font-bold uppercase border-b-2 border-legal-ink pb-1">Documentation</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section style="padding: 96px 32px 80px; border-bottom: 1px solid #e5e5e0; text-align: center;">
+    <div style="max-width: 860px; margin: 0 auto;">
+
+      <h1
+        style="font-family: 'Crimson Pro', serif; font-size: clamp(52px, 7.5vw, 76px); line-height: 1.08; font-weight: 700; margin-bottom: 28px; letter-spacing: -0.01em; color: #0d0d0d;">
+        The Parametric Engine for<br /><em>Regulated Domains.</em>
+      </h1>
+
+      <p
+        style="font-family: 'Crimson Pro', serif; font-size: clamp(18px, 2.2vw, 22px); color: #475569; line-height: 1.65; max-width: 580px; margin: 0 auto 48px;">
+        A deterministic, stateless, and auditable rule engine designed for law, tax, and compliance. Open-source core,
+        domain-expert plugins.
+      </p>
+
+      <div class="hero-btns">
+        <button class="btn-primary">Get Started (npm)</button>
+        <button class="btn-secondary">View Specification</button>
+      </div>
+
+      <!-- Stats strip -->
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <div class="stat-val">SHA-256</div>
+          <div class="stat-lbl">Every snapshot signed</div>
+        </div>
+        <div class="hero-stat">
+          <div class="stat-val">100%</div>
+          <div class="stat-lbl">Deterministic · always</div>
+        </div>
+        <div class="hero-stat">
+          <div class="stat-val">MIT</div>
+          <div class="stat-lbl">Core &amp; SDK license</div>
+        </div>
+        <div class="hero-stat">
+          <div class="stat-val">∞</div>
+          <div class="stat-lbl">Replay any past result</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- INTERACTIVE DEMO -->
+  <section style="padding: 80px 32px; background: #f5f5f2; border-bottom: 1px solid #e5e5e0;">
+    <div style="max-width: 1100px; margin: 0 auto;">
+      <div style="margin-bottom: 48px;">
+        <span class="section-label"> 2 — Live Demonstration</span>
+        <h2 style="font-family: 'Crimson Pro', serif; font-size: 36px; font-weight: 700; margin-top: 12px;">See the
+          pipeline execute.</h2>
+        <p style="font-family: 'Crimson Pro', serif; font-size: 18px; color: #6b7280; margin-top: 8px;">Edit the input,
+          select a domain, run the evaluation.</p>
+      </div>
+
+      <div
+        style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1px; background: #e5e5e0; border: 1px solid #e5e5e0;">
+        <!-- Input -->
+        <div style="background: #fafaf9; padding: 28px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <span class="section-label">Input</span>
+            <select class="styled" id="domainSelect" onchange="updateSample()">
+              <option value="fiscal">Fiscal · TG</option>
+              <option value="payroll">Payroll · TG</option>
+              <option value="banking">Banking fees</option>
+            </select>
+          </div>
+          <textarea class="editable-input" id="inputData" rows="14" spellcheck="false">{
+  "requestId": "req-001",
+  "data": {
+    "net_taxable_income": 2400000,
+    "country": "TG",
+    "regime": "reel"
+  },
+  "meta": {
+    "tenantId": "tenant-xyz"
+  }
+}</textarea>
+          <button class="btn-primary" style="width: 100%; margin-top: 12px;" onclick="runDemo()">
+            Execute Evaluation →
+          </button>
+        </div>
+
+        <!-- Pipeline trace -->
+        <div style="background: #fafaf9; padding: 28px;">
+          <div style="margin-bottom: 20px;">
+            <span class="section-label">Pipeline · 10 steps</span>
+          </div>
+          <div id="pipelineSteps" style="border-left: 2px solid #e5e5e0; padding-left: 20px; position: relative;">
+            <!-- Steps injected by JS -->
+          </div>
+        </div>
+
+        <!-- Result -->
+        <div style="background: #fafaf9; padding: 28px;">
+          <div style="margin-bottom: 20px;">
+            <span class="section-label">Evaluation Result</span>
+          </div>
+          <div id="resultPanel"
+            style="font-family: 'DM Mono', monospace; font-size: 11px; color: #9ca3af; min-height: 300px;">
+            <div
+              style="display: flex; align-items: center; gap: 8px; color: #d1d5db; margin-top: 60px; flex-direction: column;">
+              <span style="font-size: 32px;">·</span>
+              <span style="font-size: 10px; letter-spacing: 0.1em;">AWAITING EXECUTION</span>
+            </div>
+          </div>
+          <div id="auditStamp" style="display: none; margin-top: 16px; text-align: right;">
+            <span class="stamp" style="color: #16a34a; border-color: #16a34a;">Snapshot Saved</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section id="how-it-works" style="padding: 80px 32px; border-bottom: 1px solid #e5e5e0;">
+    <div style="max-width: 1100px; margin: 0 auto;">
+      <div style="margin-bottom: 56px;">
+        <span class="section-label"> 3 — Architecture</span>
+        <h2 style="font-family: 'Crimson Pro', serif; font-size: 36px; font-weight: 700; margin-top: 12px;">How it
+          works.</h2>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: start;">
+        <!-- Left: architecture layers -->
+        <div>
+          <div style="border: 1px solid #e5e5e0; overflow: hidden; margin-bottom: 24px;">
+            <!-- Host layer -->
+            <div style="background: #f5f5f2; padding: 16px 20px; border-bottom: 1px solid #e5e5e0;">
+              <span class="section-label">Your Application (Host)</span>
+              <div style="font-family: 'DM Mono', monospace; font-size: 11px; color: #6b7280; margin-top: 6px;">
+                Rules DB · Snapshot Adapter · BullMQ Workers
+              </div>
+            </div>
+            <!-- Core layer -->
+            <div style="background: #fafaf9; padding: 16px 20px; border-bottom: 1px solid #e5e5e0;">
+              <span
+                style="font-family: 'DM Mono', monospace; font-size: 11px; color: #0d0d0d; font-weight: 500;">@run-iq/core</span>
+              <span class="tag" style="color: #6b7280; margin-left: 8px;">MIT</span>
+              <div
+                style="font-family: 'DM Mono', monospace; font-size: 10px; color: #9ca3af; margin-top: 8px; line-height: 1.8;">
+                InputSanitizer → Idempotence<br />
+                beforeEvaluate → RuleFilter<br />
+                DominanceResolver → ExecutionPipeline<br />
+                TraceBuilder → afterEvaluate → Snapshot
+              </div>
+            </div>
+            <!-- DSL + SDK layer -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid #e5e5e0;">
+              <div style="padding: 14px 20px; border-right: 1px solid #e5e5e0;">
+                <span style="font-family: 'DM Mono', monospace; font-size: 10px; color: #0d0d0d;">@run-iq/dsl-*</span>
+                <span class="tag" style="color: #6b7280; margin-left: 6px;">MIT</span>
+                <div style="font-family: 'DM Mono', monospace; font-size: 10px; color: #9ca3af; margin-top: 6px;">
+                  jsonlogic · cel</div>
+              </div>
+              <div style="padding: 14px 20px;">
+                <span
+                  style="font-family: 'DM Mono', monospace; font-size: 10px; color: #0d0d0d;">@run-iq/plugin-sdk</span>
+                <span class="tag" style="color: #6b7280; margin-left: 6px;">MIT</span>
+                <div style="font-family: 'DM Mono', monospace; font-size: 10px; color: #9ca3af; margin-top: 6px;">
+                  BasePlugin · PluginTester</div>
+              </div>
+            </div>
+            <!-- Plugin layer -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr;">
+              <div style="padding: 14px 20px; border-right: 1px solid #e5e5e0; background: #fafaf9;">
+                <span
+                  style="font-family: 'DM Mono', monospace; font-size: 10px; color: #0d0d0d;">@run-iq/plugin-fiscal</span>
+                <span class="tag" style="color: #b45309; margin-left: 6px;">Source-Available</span>
+                <div style="font-family: 'DM Mono', monospace; font-size: 10px; color: #9ca3af; margin-top: 6px;">
+                  FLAT_RATE · BRACKET · IS · TVA</div>
+              </div>
+              <div style="padding: 14px 20px; background: #fafaf9;">
+                <span
+                  style="font-family: 'DM Mono', monospace; font-size: 10px; color: #0d0d0d;">@run-iq/plugin-payroll</span>
+                <span class="tag" style="color: #b45309; margin-left: 6px;">Source-Available</span>
+                <div style="font-family: 'DM Mono', monospace; font-size: 10px; color: #9ca3af; margin-top: 6px;">
+                  SOCIAL_CONTRIBUTION · NET_SALARY</div>
+              </div>
+            </div>
+          </div>
+          <p style="font-family: 'Crimson Pro', serif; font-size: 15px; color: #6b7280; line-height: 1.6;">
+            The core has zero knowledge of any domain. Rules are versioned data stored by the Host. Plugins register
+            calculation models at startup.
+          </p>
+        </div>
+
+        <!-- Right: principles -->
+        <div style="display: flex; flex-direction: column; gap: 32px;">
+          <div class="reveal" style="border-left: 3px solid #0d0d0d; padding-left: 20px;">
+            <h3 style="font-weight: 700; font-size: 17px; margin-bottom: 8px;">The engine knows no domain.</h3>
+            <p style="font-family: 'Crimson Pro', serif; font-size: 16px; color: #4b5563; line-height: 1.6;">
+              <code
+                style="font-family: 'DM Mono', monospace; font-size: 12px; background: #f5f5f2; padding: 2px 5px;">rule.model</code>
+              is an opaque string. <code
+                style="font-family: 'DM Mono', monospace; font-size: 12px; background: #f5f5f2; padding: 2px 5px;">rule.params</code>
+              is <code
+                style="font-family: 'DM Mono', monospace; font-size: 12px; background: #f5f5f2; padding: 2px 5px;">unknown</code>.
+              The core resolves, dispatches, and traces — nothing more.
+            </p>
+          </div>
+          <div class="reveal" style="border-left: 3px solid #0d0d0d; padding-left: 20px;">
+            <h3 style="font-weight: 700; font-size: 17px; margin-bottom: 8px;">Every calculation leaves a sealed record.
+            </h3>
+            <p style="font-family: 'Crimson Pro', serif; font-size: 16px; color: #4b5563; line-height: 1.6;">
+              Full rule data — not IDs — are copied into the snapshot. A SHA-256 checksum seals it. Any calculation can
+              be replayed exactly 5 years later.
+            </p>
+          </div>
+          <div class="reveal" style="border-left: 3px solid #0d0d0d; padding-left: 20px;">
+            <h3 style="font-weight: 700; font-size: 17px; margin-bottom: 8px;">Conditions are data, not code.</h3>
+            <p style="font-family: 'Crimson Pro', serif; font-size: 16px; color: #4b5563; line-height: 1.6;">
+              Rules carry optional DSL conditions — JSONLogic or CEL — stored as JSONB in your database. No deployment
+              required to activate or deactivate a rule.
+            </p>
+          </div>
+          <div class="reveal" style="border-left: 3px solid #0d0d0d; padding-left: 20px;">
+            <h3 style="font-weight: 700; font-size: 17px; margin-bottom: 8px;">Idempotence is architectural.</h3>
+            <p style="font-family: 'Crimson Pro', serif; font-size: 16px; color: #4b5563; line-height: 1.6;">
+              Every call carries a <code
+                style="font-family: 'DM Mono', monospace; font-size: 12px; background: #f5f5f2; padding: 2px 5px;">requestId</code>.
+              If already processed, the existing snapshot is returned immediately. Network retries and BullMQ re-queues
+              are safe.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- GUARANTEES -->
+  <section style="padding: 80px 32px; background: #f5f5f2; border-bottom: 1px solid #e5e5e0;">
+    <div style="max-width: 1100px; margin: 0 auto;">
+      <div style="margin-bottom: 48px;">
+        <span class="section-label"> 4 — Guarantees</span>
+        <h2 style="font-family: 'Crimson Pro', serif; font-size: 36px; font-weight: 700; margin-top: 12px;">What the
+          engine commits to.</h2>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+
+        <div class="guarantee-card reveal">
+          <div
+            style="font-family: 'DM Mono', monospace; font-size: 10px; color: #9ca3af; margin-bottom: 12px; letter-spacing: 0.1em;">
+            G-01</div>
+          <h3 style="font-weight: 700; font-size: 16px; margin-bottom: 10px;">Determinism</h3>
+          <p style="font-family: 'Crimson Pro', serif; font-size: 15px; color: #4b5563; line-height: 1.6;">
+            Same input × same rules × same engine version = same result. No exceptions. Verified by automated tests on
+            every commit.
+          </p>
+        </div>
+
+        <div class="guarantee-card reveal">
+          <div
+            style="font-family: 'DM Mono', monospace; font-size: 10px; color: #9ca3af; margin-bottom: 12px; letter-spacing: 0.1em;">
+            G-02</div>
+          <h3 style="font-weight: 700; font-size: 16px; margin-bottom: 10px;">Immutability</h3>
+          <p style="font-family: 'Crimson Pro', serif; font-size: 15px; color: #4b5563; line-height: 1.6;">
+            Rules are SHA-256 checksummed. Any mutation in transit is detected and the rule is rejected before
+            execution.
+          </p>
+        </div>
+
+        <div class="guarantee-card reveal">
+          <div
+            style="font-family: 'DM Mono', monospace; font-size: 10px; color: #9ca3af; margin-bottom: 12px; letter-spacing: 0.1em;">
+            G-03</div>
+          <h3 style="font-weight: 700; font-size: 16px; margin-bottom: 10px;">Idempotence</h3>
+          <p style="font-family: 'Crimson Pro', serif; font-size: 15px; color: #4b5563; line-height: 1.6;">
+            <code
+              style="font-family: 'DM Mono', monospace; font-size: 11px; background: #f0f0ec; padding: 1px 5px;">requestId</code>
+            is checked before any computation. Duplicate calls return the existing snapshot — zero recalculation.
+          </p>
+        </div>
+
+        <div class="guarantee-card reveal">
+          <div
+            style="font-family: 'DM Mono', monospace; font-size: 10px; color: #9ca3af; margin-bottom: 12px; letter-spacing: 0.1em;">
+            G-04</div>
+          <h3 style="font-weight: 700; font-size: 16px; margin-bottom: 10px;">Legal Reproducibility</h3>
+          <p style="font-family: 'Crimson Pro', serif; font-size: 15px; color: #4b5563; line-height: 1.6;">
+            Snapshots store full rule data — not IDs. Coupled with archived engine + DSL versions, any calculation can
+            be replayed verbatim years later.
+          </p>
+        </div>
+
+        <div class="guarantee-card reveal">
+          <div
+            style="font-family: 'DM Mono', monospace; font-size: 10px; color: #9ca3af; margin-bottom: 12px; letter-spacing: 0.1em;">
+            G-05</div>
+          <h3 style="font-weight: 700; font-size: 16px; margin-bottom: 10px;">Decimal Precision</h3>
+          <p style="font-family: 'Crimson Pro', serif; font-size: 15px; color: #4b5563; line-height: 1.6;">
+            All financial arithmetic uses <code
+              style="font-family: 'DM Mono', monospace; font-size: 11px; background: #f0f0ec; padding: 1px 5px;">decimal.js</code>.
+            Native float is prohibited. <code
+              style="font-family: 'DM Mono', monospace; font-size: 11px; background: #f0f0ec; padding: 1px 5px;">0.1 + 0.2 ≠ 0.30...004</code>
+            here.
+          </p>
+        </div>
+
+        <div class="guarantee-card reveal">
+          <div
+            style="font-family: 'DM Mono', monospace; font-size: 10px; color: #9ca3af; margin-bottom: 12px; letter-spacing: 0.1em;">
+            G-06</div>
+          <h3 style="font-weight: 700; font-size: 16px; margin-bottom: 10px;">Snapshot Integrity</h3>
+          <p style="font-family: 'Crimson Pro', serif; font-size: 15px; color: #4b5563; line-height: 1.6;">
+            In strict mode, the engine withholds the result if the snapshot fails to save. A calculation without an
+            archived trace has no legal value.
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- PLUGINS -->
+  <section id="plugins" style="padding: 80px 32px; border-bottom: 1px solid #e5e5e0;">
+    <div style="max-width: 1100px; margin: 0 auto;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: start;">
+        <div>
+          <span class="section-label"> 5 — Plugin Ecosystem</span>
+          <h2
+            style="font-family: 'Crimson Pro', serif; font-size: 36px; font-weight: 700; margin-top: 12px; margin-bottom: 20px;">
+            Domain knowledge,<br />cleanly packaged.</h2>
+          <p
+            style="font-family: 'Crimson Pro', serif; font-size: 17px; color: #4b5563; line-height: 1.6; margin-bottom: 28px;">
+            The engine is MIT and free. Domain plugins carry the regulated knowledge — fiscal brackets, payroll rules,
+            social contributions. They are Source-Available: readable, auditable, commercially licensed.
+          </p>
+          <p
+            style="font-family: 'Crimson Pro', serif; font-size: 17px; color: #4b5563; line-height: 1.6; margin-bottom: 32px;">
+            Build your own with <code
+              style="font-family: 'DM Mono', monospace; font-size: 13px; background: #f5f5f2; padding: 2px 6px;">@run-iq/plugin-sdk</code>.
+            Extend <code
+              style="font-family: 'DM Mono', monospace; font-size: 13px; background: #f5f5f2; padding: 2px 6px;">BasePlugin</code>,
+            declare your models, run <code
+              style="font-family: 'DM Mono', monospace; font-size: 13px; background: #f5f5f2; padding: 2px 6px;">PluginTester</code>
+            to verify PPE conformance.
+          </p>
+          <div class="code-block">
+            <span class="k">import</span> { BasePlugin, BaseModel } <span class="k">from</span> <span
+              class="s">"@run-iq/plugin-sdk"</span>
+
+            <span class="k">class</span> <span class="n">MyModel</span> <span class="k">extends</span> BaseModel {
+            name = <span class="s">"MY_RATE"</span>
+            calculate(input, rule, params): <span class="n">number</span> {
+            <span class="c">// Pure function. Always deterministic.</span>
+            <span class="k">return</span> <span class="k">new</span> Decimal(input[params.base])
+            .mul(params.rate).toNumber()
+            }
+            }
+
+            <span class="k">class</span> <span class="n">MyPlugin</span> <span class="k">extends</span> BasePlugin {
+            name = <span class="s">"@my-org/my-plugin"</span>
+            models = [<span class="k">new</span> MyModel()]
+            }
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <!-- Official plugins -->
+          <div class="plugin-card">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+              <div>
+                <span
+                  style="font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500;">@run-iq/plugin-fiscal</span>
+                <span class="tag" style="color: #b45309; margin-left: 8px;">Source-Available</span>
+              </div>
+              <span class="tag" style="color: #16a34a;">In progress</span>
+            </div>
+            <p
+              style="font-family: 'Crimson Pro', serif; font-size: 14px; color: #6b7280; line-height: 1.5; margin-bottom: 10px;">
+              TVA, IRPP, IS, cotisations sociales. Multi-country West Africa. Jurisdiction resolver with
+              national/regional/municipal priority.
+            </p>
+            <div style="font-family: 'DM Mono', monospace; font-size: 10px; color: #9ca3af;">
+              FLAT_RATE · PROGRESSIVE_BRACKET · MINIMUM_TAX · COMPOSITE · META_INHIBITION
+            </div>
+          </div>
+
+          <div class="plugin-card">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+              <div>
+                <span
+                  style="font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500;">@run-iq/plugin-payroll</span>
+                <span class="tag" style="color: #b45309; margin-left: 8px;">Source-Available</span>
+              </div>
+              <span class="tag" style="color: #9ca3af;">Roadmap</span>
+            </div>
+            <p
+              style="font-family: 'Crimson Pro', serif; font-size: 14px; color: #6b7280; line-height: 1.5; margin-bottom: 10px;">
+              Gross-to-net salary assembly. Social contributions (CNSS/AMO). Performance bonuses. Commission brackets.
+            </p>
+            <div style="font-family: 'DM Mono', monospace; font-size: 10px; color: #9ca3af;">
+              SOCIAL_CONTRIBUTION · COMMISSION · PERFORMANCE_BONUS · NET_SALARY_ASSEMBLY
+            </div>
+          </div>
+
+          <div class="plugin-card" style="border-style: dashed;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+              <span
+                style="font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; color: #9ca3af;">@your-org/plugin-custom</span>
+              <span class="tag" style="color: #9ca3af;">Yours to build</span>
+            </div>
+            <p style="font-family: 'Crimson Pro', serif; font-size: 14px; color: #9ca3af; line-height: 1.5;">
+              Banking fees, insurance premiums, energy tariffs, government subsidies — any domain with versioned rules
+              and a need for audit.
+            </p>
+            <div style="margin-top: 12px;">
+              <a href="#"
+                style="font-family: 'DM Mono', monospace; font-size: 10px; color: #0d0d0d; letter-spacing: 0.05em; text-decoration: none; border-bottom: 1px solid #0d0d0d; padding-bottom: 1px;">Build
+                a plugin →</a>
+            </div>
+          </div>
+
+          <!-- DSL packages -->
+          <div style="border: 1px solid #e5e5e0; padding: 16px 20px;">
+            <div style="margin-bottom: 10px;"><span class="section-label">DSL Evaluators (MIT)</span></div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-family: 'DM Mono', monospace; font-size: 11px;">@run-iq/dsl-jsonlogic</span>
+                <span class="tag" style="color: #16a34a;">Available</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-family: 'DM Mono', monospace; font-size: 11px;">@run-iq/dsl-cel</span>
+                <span class="tag" style="color: #9ca3af;">Roadmap</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PERFORMANCE -->
+  <section id="performance" style="padding: 80px 32px; background: #f5f5f2; border-bottom: 1px solid #e5e5e0;">
+    <div style="max-width: 1100px; margin: 0 auto;">
+      <div style="margin-bottom: 48px;">
+        <span class="section-label"> 6 — Benchmarks</span>
+        <h2 style="font-family: 'Crimson Pro', serif; font-size: 36px; font-weight: 700; margin-top: 12px;">Performance
+          targets.</h2>
+        <p style="font-family: 'Crimson Pro', serif; font-size: 17px; color: #6b7280; margin-top: 8px;">Phase 2 target
+          benchmarks · Node.js 20 · M2 Pro</p>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 24px; max-width: 700px;">
+        <div class="reveal perf-item">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+            <div>
+              <span style="font-weight: 600; font-size: 14px;">100 rules</span>
+              <span
+                style="font-family: 'DM Mono', monospace; font-size: 11px; color: #9ca3af; margin-left: 12px;">simple
+                FLAT_RATE · no DSL conditions</span>
+            </div>
+            <span style="font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 600;">&lt; 1ms</span>
+          </div>
+          <div style="background: #e5e5e0; height: 4px; border-radius: 0;">
+            <div class="perf-bar" id="bar1" style="width: 4%; height: 4%;"></div>
+          </div>
+        </div>
+
+        <div class="reveal perf-item">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+            <div>
+              <span style="font-weight: 600; font-size: 14px;">1,000 rules</span>
+              <span style="font-family: 'DM Mono', monospace; font-size: 11px; color: #9ca3af; margin-left: 12px;">mixed
+                models · JSONLogic conditions</span>
+            </div>
+            <span style="font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 600;">&lt; 10ms</span>
+          </div>
+          <div style="background: #e5e5e0; height: 4px; border-radius: 0;">
+            <div class="perf-bar" id="bar2" style="width: 20%; height: 4%;"></div>
+          </div>
+        </div>
+
+        <div class="reveal perf-item">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+            <div>
+              <span style="font-weight: 600; font-size: 14px;">10,000 rules</span>
+              <span
+                style="font-family: 'DM Mono', monospace; font-size: 11px; color: #9ca3af; margin-left: 12px;">complex
+                domain · multi-plugin · full trace</span>
+            </div>
+            <span style="font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 600;">&lt; 50ms</span>
+          </div>
+          <div style="background: #e5e5e0; height: 4px; border-radius: 0;">
+            <div class="perf-bar" id="bar3" style="width: 100%; height: 4%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 48px; padding: 24px; border: 1px solid #e5e5e0; background: #fafaf9; max-width: 700px;">
+        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+          <div>
+            <div class="section-label" style="margin-bottom: 6px;">Checksum strategy</div>
+            <p style="font-family: 'Crimson Pro', serif; font-size: 14px; color: #4b5563;">Host computes SHA-256 once on
+              write. Core compares strings only — zero CPU during pipeline.</p>
+          </div>
+          <div style="border-left: 1px solid #e5e5e0; padding-left: 20px;">
+            <div class="section-label" style="margin-bottom: 6px;">Phase 3 optimization</div>
+            <p style="font-family: 'Crimson Pro', serif; font-size: 14px; color: #4b5563;">AOT compilation of DSL
+              conditions into native JS functions. Target: 10–50× faster condition evaluation.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- QUICK START CODE -->
+  <section style="padding: 80px 32px; border-bottom: 1px solid #e5e5e0;">
+    <div style="max-width: 1100px; margin: 0 auto;">
+      <div style="margin-bottom: 48px;">
+        <span class="section-label"> 7 — Integration</span>
+        <h2 style="font-family: 'Crimson Pro', serif; font-size: 36px; font-weight: 700; margin-top: 12px;">Integrate in
+          minutes.</h2>
+      </div>
+      <div
+        style="display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: #e5e5e0; border: 1px solid #e5e5e0;">
+        <div>
+          <div
+            style="background: #1a1a1a; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center;">
+            <span
+              style="font-family: 'DM Mono', monospace; font-size: 10px; color: #6b7280; letter-spacing: 0.1em;">engine.ts</span>
+            <span class="tag" style="color: #6b7280; border-color: #333;">TypeScript</span>
+          </div>
+          <div class="code-block" style="border-right: 1px solid #222;">
+            <span class="k">import</span> { PPEEngine } <span class="k">from</span> <span
+              class="s">"@run-iq/core"</span>
+            <span class="k">import</span> { JsonLogicEvaluator } <span class="k">from</span> <span
+              class="s">"@run-iq/dsl-jsonlogic"</span>
+            <span class="k">import</span> { FiscalPlugin } <span class="k">from</span> <span
+              class="s">"@run-iq/plugin-fiscal"</span>
+
+            <span class="k">const</span> engine = <span class="k">new</span> <span class="n">PPEEngine</span>({
+            plugins : [<span class="k">new</span> <span class="n">FiscalPlugin</span>()],
+            dsls : [<span class="k">new</span> <span class="n">JsonLogicEvaluator</span>()],
+            snapshot: <span class="k">new</span> <span class="n">PostgresSnapshotAdapter</span>(db),
+            strict : <span class="k">true</span>,
+            timeout : { dsl: <span class="n">100</span>, hook: <span class="n">500</span> }
+            })
+
+            <span class="c">// Evaluate — snapshot auto-saved</span>
+            <span class="k">const</span> result = <span class="k">await</span> engine.evaluate(rules, {
+            requestId: crypto.randomUUID(),
+            data : { net_taxable_income: <span class="n">2400000</span> },
+            meta : { tenantId: <span class="s">"org-123"</span> }
+            })
+
+            result.value <span class="c">// calculated amount</span>
+            result.snapshotId <span class="c">// archived — legally sealed</span>
+            result.trace <span class="c">// full step-by-step audit</span>
+          </div>
+        </div>
+        <div>
+          <div
+            style="background: #1a1a1a; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center;">
+            <span
+              style="font-family: 'DM Mono', monospace; font-size: 10px; color: #6b7280; letter-spacing: 0.1em;">snapshot.adapter.ts</span>
+            <span class="tag" style="color: #6b7280; border-color: #333;">ISnapshotAdapter</span>
+          </div>
+          <div class="code-block">
+            <span class="c">// Implement once — use any storage</span>
+            <span class="k">class</span> <span class="n">PostgresSnapshotAdapter</span>
+            <span class="k">implements</span> ISnapshotAdapter {
+
+            <span class="k">async</span> save(snapshot: Snapshot) {
+            <span class="k">await</span> db.snapshots.create({ data: snapshot })
+            <span class="k">return</span> snapshot.id
+            }
+
+            <span class="k">async</span> get(id: <span class="n">string</span>) {
+            <span class="k">return</span> db.snapshots.findUniqueOrThrow(
+            { where: { id } }
+            )
+            }
+
+            <span class="k">async</span> exists(requestId: <span class="n">string</span>) {
+            <span class="k">return</span> (<span class="k">await</span> db.snapshots.count(
+            { where: { requestId } }
+            )) > <span class="n">0</span>
+            }
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer style="padding: 72px 32px 40px;">
+    <div style="max-width: 1100px; margin: 0 auto;">
+      <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 48px; margin-bottom: 64px;">
+
+        <div>
+          <div
+            style="font-family: 'Crimson Pro', serif; font-size: 24px; font-weight: 700; margin-bottom: 16px; letter-spacing: -0.02em;">
+            RUN-IQ</div>
+          <p
+            style="font-family: 'Crimson Pro', serif; font-size: 17px; color: #6b7280; line-height: 1.6; margin-bottom: 24px; max-width: 260px;">
+            The parametric rule engine for regulated domains. Deterministic, auditable, extensible.
+          </p>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <span class="tag" style="color: #6b7280; border-color: #d1d5db; font-size: 9px;">@run-iq/core · MIT</span>
+            <span class="tag" style="color: #6b7280; border-color: #d1d5db; font-size: 9px;">TypeScript · strict</span>
+          </div>
+        </div>
+
+        <div>
+          <div
+            style="font-size: 10px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: #6b7280; margin-bottom: 20px;">
+            Packages</div>
+          <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px;">
+            <li><a href="#"
+                style="font-family: 'DM Mono', monospace; font-size: 11px; color: #0d0d0d; text-decoration: none; transition: opacity 0.15s;"
+                onmouseover="this.style.opacity='0.6'" onmouseout="this.style.opacity='1'">@run-iq/core</a></li>
+            <li><a href="#"
+                style="font-family: 'DM Mono', monospace; font-size: 11px; color: #0d0d0d; text-decoration: none; transition: opacity 0.15s;"
+                onmouseover="this.style.opacity='0.6'" onmouseout="this.style.opacity='1'">@run-iq/plugin-sdk</a></li>
+            <li><a href="#"
+                style="font-family: 'DM Mono', monospace; font-size: 11px; color: #0d0d0d; text-decoration: none; transition: opacity 0.15s;"
+                onmouseover="this.style.opacity='0.6'" onmouseout="this.style.opacity='1'">@run-iq/dsl-jsonlogic</a>
+            </li>
+            <li><a href="#"
+                style="font-family: 'DM Mono', monospace; font-size: 11px; color: #0d0d0d; text-decoration: none; transition: opacity 0.15s;"
+                onmouseover="this.style.opacity='0.6'" onmouseout="this.style.opacity='1'">@run-iq/plugin-fiscal</a>
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <div
+            style="font-size: 10px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: #6b7280; margin-bottom: 20px;">
+            Resources</div>
+          <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px;">
+            <li><a href="#"
+                style="font-family: 'Crimson Pro', serif; font-size: 14px; color: #0d0d0d; text-decoration: none; transition: opacity 0.15s;"
+                onmouseover="this.style.opacity='0.6'" onmouseout="this.style.opacity='1'">Documentation</a></li>
+            <li><a href="#"
+                style="font-family: 'Crimson Pro', serif; font-size: 14px; color: #0d0d0d; text-decoration: none; transition: opacity 0.15s;"
+                onmouseover="this.style.opacity='0.6'" onmouseout="this.style.opacity='1'">Architecture spec</a></li>
+            <li><a href="https://github.com/Run-IQ"
+                style="font-family: 'Crimson Pro', serif; font-size: 14px; color: #0d0d0d; text-decoration: none; transition: opacity 0.15s;"
+                onmouseover="this.style.opacity='0.6'" onmouseout="this.style.opacity='1'">GitHub</a></li>
+            <li><a href="#"
+                style="font-family: 'Crimson Pro', serif; font-size: 14px; color: #0d0d0d; text-decoration: none; transition: opacity 0.15s;"
+                onmouseover="this.style.opacity='0.6'" onmouseout="this.style.opacity='1'">Changelog</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <div
+            style="font-size: 10px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: #6b7280; margin-bottom: 20px;">
+            Legal</div>
+          <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px;">
+            <li><a href="#"
+                style="font-family: 'Crimson Pro', serif; font-size: 14px; color: #0d0d0d; text-decoration: none; transition: opacity 0.15s;"
+                onmouseover="this.style.opacity='0.6'" onmouseout="this.style.opacity='1'">MIT License</a></li>
+            <li><a href="#"
+                style="font-family: 'Crimson Pro', serif; font-size: 14px; color: #0d0d0d; text-decoration: none; transition: opacity 0.15s;"
+                onmouseover="this.style.opacity='0.6'" onmouseout="this.style.opacity='1'">Source-Available terms</a>
+            </li>
+            <li><a href="#"
+                style="font-family: 'Crimson Pro', serif; font-size: 14px; color: #0d0d0d; text-decoration: none; transition: opacity 0.15s;"
+                onmouseover="this.style.opacity='0.6'" onmouseout="this.style.opacity='1'">Security policy</a></li>
+            <li><a href="#"
+                style="font-family: 'Crimson Pro', serif; font-size: 14px; color: #0d0d0d; text-decoration: none; transition: opacity 0.15s;"
+                onmouseover="this.style.opacity='0.6'" onmouseout="this.style.opacity='1'">Pricing</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Footer bottom -->
+      <div
+        style="border-top: 1px solid #e5e5e0; padding-top: 28px; display: flex; justify-content: space-between; align-items: center;">
+        <p style="font-family: 'DM Mono', monospace; font-size: 10px; color: #9ca3af; letter-spacing: 0.06em;">
+          © 2025 ABDOU-RAOUF ATARMLA · RUN-IQ · run-iq.org
+        </p>
+        <p
+          style="font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: #9ca3af;">
+          Run-IQ implements the PPE specification.
+        </p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // ——— PIPELINE DEMO ———
+    const PIPELINE_STEPS = [
+      { id: 1, label: "Input Sanitizer", detail: "Structure & types validated." },
+      { id: 2, label: "Idempotence check", detail: "requestId not seen. Proceeding." },
+      { id: 3, label: "beforeEvaluate", detail: "FiscalPlugin: jurisdiction resolved." },
+      { id: 4, label: "Rule Filter", detail: "3 rules active. 1 skipped (date)." },
+      { id: 5, label: "Rule Validator", detail: "Checksums verified. Params valid." },
+      { id: 6, label: "Dominance Resolver", detail: "Priority order established." },
+      { id: 7, label: "Execution Pipeline", detail: "PROGRESSIVE_BRACKET applied." },
+      { id: 8, label: "Trace Builder", detail: "Audit trail complete." },
+      { id: 9, label: "afterEvaluate", detail: "FiscalPlugin: breakdown enriched." },
+      { id: 10, label: "Snapshot Manager", detail: "SHA-256 sealed. Saved to DB." },
+    ];
+
+    const SAMPLES = {
+      fiscal: `{
+  "requestId": "req-001",
+  "data": {
+    "net_taxable_income": 2400000,
+    "country": "TG",
+    "regime": "reel"
+  },
+  "meta": {
+    "tenantId": "tenant-xyz"
+  }
+}`,
+      payroll: `{
+  "requestId": "req-002",
+  "data": {
+    "gross_salary": 350000,
+    "country": "TG",
+    "kpi_score": 85
+  },
+  "meta": {
+    "tenantId": "tenant-xyz"
+  }
+}`,
+      banking: `{
+  "requestId": "req-003",
+  "data": {
+    "transaction_amount": 5750000,
+    "fee_type": "transfer"
+  },
+  "meta": {
+    "tenantId": "tenant-bank"
+  }
+}`,
+    };
+
+    const RESULTS = {
+      fiscal: {
+        value: "147000",
+        breakdown: [
+          { label: "Tranche 0–900k (0%)", contribution: "0.00" },
+          { label: "Tranche 900k–1.8M (10%)", contribution: "90000.00" },
+          { label: "Tranche 1.8M–2.4M (15%)", contribution: "90000.00" },
+        ],
+        model: "PROGRESSIVE_BRACKET",
+        category: "IRPP"
+      },
+      payroll: {
+        value: "12600",
+        breakdown: [
+          { label: "CNSS part salarié (3.6%)", contribution: "12600.00" },
+        ],
+        model: "SOCIAL_CONTRIBUTION",
+        category: "CNSS"
+      },
+      banking: {
+        value: "17250",
+        breakdown: [
+          { label: "Frais transfert (0.3%)", contribution: "17250.00" },
+        ],
+        model: "FLAT_RATE",
+        category: "TRANSFER_FEE"
+      },
+    };
+
+    function updateSample() {
+      const domain = document.getElementById('domainSelect').value;
+      document.getElementById('inputData').value = SAMPLES[domain];
+      resetDemo();
+    }
+
+    function resetDemo() {
+      document.getElementById('pipelineSteps').innerHTML = '';
+      document.getElementById('resultPanel').innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;color:#d1d5db;margin-top:60px;flex-direction:column;">
+      <span style="font-size:32px;">·</span>
+      <span style="font-size:10px;letter-spacing:0.1em;">AWAITING EXECUTION</span>
+    </div>`;
+      document.getElementById('auditStamp').style.display = 'none';
+    }
+
+    function runDemo() {
+      const stepsContainer = document.getElementById('pipelineSteps');
+      stepsContainer.innerHTML = '';
+      document.getElementById('auditStamp').style.display = 'none';
+      document.getElementById('resultPanel').innerHTML = '';
+
+      // Render all steps invisible first
+      PIPELINE_STEPS.forEach((step, i) => {
+        const el = document.createElement('div');
+        el.className = 'pipeline-step';
+        el.style.cssText = 'position:relative; margin-bottom:16px;';
+        el.innerHTML = `
+      <div style="display:flex;align-items:flex-start;gap:12px;">
+        <div class="step-dot" style="width:10px;height:10px;border-radius:50%;background:#d1d5db;margin-top:4px;flex-shrink:0;"></div>
+        <div>
+          <div style="font-size:12px;font-weight:600;font-family:'Figtree',sans-serif;">${step.label}</div>
+          <div class="step-detail" style="font-family:'DM Mono',monospace;font-size:10px;color:#9ca3af;margin-top:3px;opacity:0;">${step.detail}</div>
+        </div>
+        <div style="margin-left:auto;font-family:'DM Mono',monospace;font-size:9px;color:#d1d5db;" class="step-time"></div>
+      </div>`;
+        stepsContainer.appendChild(el);
+      });
+
+      // Animate steps sequentially
+      let delay = 0;
+      PIPELINE_STEPS.forEach((step, i) => {
+        const el = stepsContainer.children[i];
+        const dot = el.querySelector('.step-dot');
+        const detail = el.querySelector('.step-detail');
+        const timeEl = el.querySelector('.step-time');
+        const stepTime = Math.floor(Math.random() * 3) + 1;
+
+        setTimeout(() => {
+          el.classList.add('active');
+          dot.style.background = '#fbbf24';
+          dot.style.animation = 'pulse 0.5s infinite';
+        }, delay);
+
+        setTimeout(() => {
+          dot.style.background = '#0d0d0d';
+          dot.style.animation = '';
+          detail.style.opacity = '1';
+          detail.style.transition = 'opacity 0.3s';
+          timeEl.textContent = `${stepTime}ms`;
+          timeEl.style.color = '#9ca3af';
+        }, delay + 350);
+
+        delay += 200;
+      });
+
+      // Show result
+      const domain = document.getElementById('domainSelect').value;
+      const res = RESULTS[domain];
+      const totalDelay = delay + 400;
+
+      setTimeout(() => {
+        const hash = 'sha256:' + Math.random().toString(36).substr(2, 8) + '...' + Math.random().toString(36).substr(2, 4);
+        const snapshotId = 'snap_' + Date.now();
+
+        document.getElementById('resultPanel').innerHTML = `
+      <div style="font-family:'DM Mono',monospace;font-size:11px;line-height:2;">
+        <div style="margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #e5e5e0;">
+          <span style="color:#9ca3af;">model</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#0d0d0d;font-weight:600;">${res.model}</span><br/>
+          <span style="color:#9ca3af;">category</span>&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#0d0d0d;">${res.category}</span>
+        </div>
+        <div style="margin-bottom:16px;">
+          ${res.breakdown.map(b => `
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+              <span style="color:#9ca3af;font-size:10px;">${b.label}</span>
+              <span style="color:#4b5563;">${Number(b.contribution).toLocaleString()} XOF</span>
+            </div>`).join('')}
+        </div>
+        <div style="border-top:2px solid #0d0d0d;padding-top:12px;display:flex;justify-content:space-between;align-items:center;">
+          <span style="color:#9ca3af;">total</span>
+          <span style="font-size:18px;font-weight:700;font-family:'Crimson Pro',serif;">${Number(res.value).toLocaleString()} XOF</span>
+        </div>
+        <div style="margin-top:16px;padding-top:12px;border-top:1px solid #e5e5e0;">
+          <div style="color:#9ca3af;font-size:9px;margin-bottom:4px;">SNAPSHOT</div>
+          <div style="color:#6b7280;font-size:9px;word-break:break-all;">${snapshotId}</div>
+          <div style="color:#6b7280;font-size:9px;word-break:break-all;margin-top:2px;">${hash}</div>
+        </div>
+      </div>`;
+
+        document.getElementById('auditStamp').style.display = 'block';
+      }, totalDelay);
+    }
+
+    // Init pipeline empty
+    document.getElementById('pipelineSteps').innerHTML = `
+  <div style="color:#d1d5db;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;margin-top:60px;text-align:center;">
+    PRESS EXECUTE
+  </div>`;
+
+    // ——— COPY NPM ———
+    function copyNpm(btn) {
+      navigator.clipboard.writeText('npm install @run-iq/core @run-iq/dsl-jsonlogic');
+      btn.textContent = 'COPIED';
+      setTimeout(() => btn.textContent = 'COPY', 2000);
+    }
+
+    // ——— SCROLL REVEAL ———
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry, i) => {
+        if (entry.isIntersecting) {
+          setTimeout(() => {
+            entry.target.classList.add('visible');
+          }, 80);
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+    // ——— PERF BARS ———
+    const perfObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          setTimeout(() => {
+            document.querySelectorAll('.perf-bar').forEach((bar, i) => {
+              const widths = ['4%', '20%', '100%'];
+              bar.style.width = widths[i];
+              bar.classList.add('animate');
+            });
+          }, 200);
+          perfObserver.disconnect();
+        }
+      });
+    }, { threshold: 0.3 });
+
+    const perfSection = document.getElementById('performance');
+    if (perfSection) perfObserver.observe(perfSection);
+  </script>
+</body>
+
+</html>

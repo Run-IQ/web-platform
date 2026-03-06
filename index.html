@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Run-IQ | The Parametric Engine for Regulated Domains</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&amp;family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "legal-charcoal": "#1a1a1a",
+                        "legal-ink": "#000000",
+                        "legal-paper": "#ffffff",
+                        "legal-accent": "#334155"
+                    },
+                    fontFamily: {
+                        "serif": ["Crimson Pro", "serif"],
+                        "sans": ["Inter", "sans-serif"],
+                        "mono": ["JetBrains Mono", "monospace"]
+                    }
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        @layer base {
+            body { @apply bg-legal-paper text-legal-charcoal font-sans; }
+            h1, h2, h3 { @apply font-serif; }
+        }
+        .rule-document {
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            background-image: linear-gradient(#f8fafc 1px, transparent 1px);
+            background-size: 100% 2rem;
+        }
+        .stamp {
+            border: 2px solid currentColor;
+            padding: 2px 8px;
+            text-transform: uppercase;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            transform: rotate(-5deg);
+        }
+    </style>
+</head>
+<body class="selection:bg-legal-charcoal selection:text-white">
+<header class="border-b border-legal-ink/10 py-6 px-8 sticky top-0 bg-white/95 backdrop-blur-sm z-50">
+<div class="max-w-6xl mx-auto flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="text-2xl font-serif font-bold tracking-tight">RUN-IQ</span>
+<span class="text-[10px] font-mono border border-legal-charcoal px-1 ml-2">v2.4.0_STABLE</span>
+</div>
+<nav class="hidden md:flex gap-10 text-xs font-semibold uppercase tracking-widest text-legal-accent">
+<a class="hover:text-legal-ink underline-offset-4 hover:underline" href="#">Specification</a>
+<a class="hover:text-legal-ink underline-offset-4 hover:underline" href="#">Plugin Directory</a>
+<a class="hover:text-legal-ink underline-offset-4 hover:underline" href="#">Governance</a>
+<a class="hover:text-legal-ink underline-offset-4 hover:underline" href="#">Audit Log</a>
+</nav>
+<div class="flex gap-4">
+<button class="text-xs font-bold uppercase tracking-tighter border-b-2 border-legal-ink pb-1">Documentation</button>
+</div>
+</div>
+</header>
+<main>
+<section class="py-24 px-8 border-b border-legal-ink/5">
+<div class="max-w-4xl mx-auto text-center">
+<h1 class="text-6xl md:text-7xl text-legal-ink leading-tight mb-8">
+                The Parametric Engine for <br/><span class="italic">Regulated Domains.</span>
+</h1>
+<p class="text-xl md:text-2xl text-slate-600 font-serif leading-relaxed mb-12 max-w-2xl mx-auto">
+                A deterministic, stateless, and auditable rule engine designed for law, tax, and compliance. Open-source core, domain-expert plugins.
+            </p>
+<div class="flex flex-col items-center gap-4">
+<button class="w-64 py-4 bg-legal-ink text-white text-sm font-bold uppercase tracking-widest hover:bg-legal-charcoal transition-all">
+                    Get Started (npm)
+                </button>
+<button class="w-64 py-4 border border-legal-ink text-legal-ink text-sm font-bold uppercase tracking-widest hover:bg-slate-50 transition-all">
+                    View Specification
+                </button>
+</div>
+</div>
+</section>
+<section class="py-24 px-8 bg-slate-50">
+<div class="max-w-6xl mx-auto">
+<div class="mb-12 text-center">
+<h2 class="text-xs font-bold uppercase tracking-[0.3em] text-slate-500 mb-4">Exhibit A // Verification Engine</h2>
+<h3 class="text-3xl">Interactive Decision Proof</h3>
+</div>
+<div class="grid lg:grid-cols-2 gap-px bg-slate-200 border border-slate-200">
+<div class="bg-white p-12">
+<div class="mb-8">
+<label class="block text-[10px] font-mono uppercase text-slate-400 mb-4 font-bold">Protocol Input (JSON)</label>
+<div class="font-mono text-sm bg-slate-50 p-6 border border-slate-100 min-h-[300px]">
+<span class="text-blue-600">{</span><br/>
+                              <span class="text-slate-400">"domain":</span> <span class="text-green-700">"tax-eu-v1"</span>,<br/>
+                              <span class="text-slate-400">"gross_income":</span> <span class="text-orange-600">85000</span>,<br/>
+                              <span class="text-slate-400">"residency":</span> <span class="text-green-700">"FR"</span>,<br/>
+                              <span class="text-slate-400">"deductions":</span> <span class="text-orange-600">[]</span><br/>
+<span class="text-blue-600">}</span>
+</div>
+</div>
+<button class="w-full py-3 bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-widest cursor-not-allowed">
+                        Execute Rule Transformation
+                    </button>
+</div>
+<div class="bg-white p-12">
+<div class="mb-8">
+<label class="block text-[10px] font-mono uppercase text-slate-400 mb-4 font-bold">Audit Trail (Decision Tree)</label>
+<div class="space-y-6 border-l-2 border-slate-100 pl-8 relative">
+<div class="relative">
+<div class="absolute -left-[37px] top-1 w-4 h-4 rounded-full bg-legal-ink"></div>
+<h4 class="text-sm font-bold uppercase tracking-tight">Root Evaluation</h4>
+<p class="text-xs text-slate-500 mt-1">Schema match: @run-iq/plugin-tax-eu validated.</p>
+</div>
+<div class="relative">
+<div class="absolute -left-[37px] top-1 w-4 h-4 rounded-full bg-slate-300"></div>
+<h4 class="text-sm font-bold uppercase tracking-tight">Node: Residency(FR)</h4>
+<p class="text-xs text-slate-500 mt-1">Condition true. Entering French Fiscal Logic Path.</p>
+</div>
+<div class="relative">
+<div class="absolute -left-[37px] top-1 w-4 h-4 rounded-full bg-slate-300"></div>
+<h4 class="text-sm font-bold uppercase tracking-tight">Calculation: Bracket_45</h4>
+<p class="text-xs text-slate-500 mt-1">Income 85k &gt; Threshold 78k. Deterministic applying 41.2% rate.</p>
+</div>
+<div class="pt-4 border-t border-slate-100">
+<div class="flex justify-between items-center">
+<span class="text-xs font-mono font-bold">SHA-256 HASH:</span>
+<span class="text-[10px] font-mono text-slate-400">8d2f...3a1e</span>
+</div>
+</div>
+</div>
+</div>
+<div class="flex justify-end">
+<div class="stamp text-green-700 text-sm border-green-700">Audit Verified</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section class="py-24 px-8 border-b border-legal-ink/5">
+<div class="max-w-4xl mx-auto">
+<h2 class="text-xs font-bold uppercase tracking-[0.3em] text-slate-500 mb-16 text-center">Core Principles</h2>
+<div class="space-y-12">
+<div class="flex gap-8 group">
+<div class="text-3xl font-serif italic text-slate-300 group-hover:text-legal-ink transition-colors">01.</div>
+<div>
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-legal-ink">adjust</span>
+<h3 class="text-2xl font-bold">Deterministic &amp; Stateless</h3>
+</div>
+<p class="text-lg text-slate-600 leading-relaxed font-serif">
+                            Le même input produira toujours le même output. Garanti par construction. No side effects, no hidden states, purely mathematical execution.
+                        </p>
+</div>
+</div>
+<div class="flex gap-8 group">
+<div class="text-3xl font-serif italic text-slate-300 group-hover:text-legal-ink transition-colors">02.</div>
+<div>
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-legal-ink">history_edu</span>
+<h3 class="text-2xl font-bold">Immutable Audit Trail</h3>
+</div>
+<p class="text-lg text-slate-600 leading-relaxed font-serif">
+                            Chaque calcul génère un snapshot complet. Une preuve légale reproductible à tout moment. Complete traceability from entry to final resolution.
+                        </p>
+</div>
+</div>
+<div class="flex gap-8 group">
+<div class="text-3xl font-serif italic text-slate-300 group-hover:text-legal-ink transition-colors">03.</div>
+<div>
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-legal-ink">architecture</span>
+<h3 class="text-2xl font-bold">Domain Agnostic</h3>
+</div>
+<p class="text-lg text-slate-600 leading-relaxed font-serif">
+                            Le moteur (@run-iq/core) est pur. La logique métier appartient aux plugins (@run-iq/plugin-*). Decouple the engine from the ever-changing legal landscape.
+                        </p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section class="py-24 px-8 bg-white">
+<div class="max-w-4xl mx-auto">
+<div class="text-center mb-16">
+<h2 class="text-3xl mb-4">Plugin Directory</h2>
+<p class="text-slate-500 font-serif">Official domain implementations maintained by the community.</p>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+<div class="p-8 border border-slate-100 text-center group hover:border-legal-ink transition-all">
+<span class="material-symbols-outlined text-3xl mb-4 block text-slate-300 group-hover:text-legal-ink">account_balance_wallet</span>
+<h4 class="font-bold uppercase tracking-widest text-xs">Fiscalité</h4>
+</div>
+<div class="p-8 border border-slate-100 text-center group hover:border-legal-ink transition-all">
+<span class="material-symbols-outlined text-3xl mb-4 block text-slate-300 group-hover:text-legal-ink">payments</span>
+<h4 class="font-bold uppercase tracking-widest text-xs">Paie</h4>
+</div>
+<div class="p-8 border border-slate-100 text-center group hover:border-legal-ink transition-all">
+<span class="material-symbols-outlined text-3xl mb-4 block text-slate-300 group-hover:text-legal-ink">account_balance</span>
+<h4 class="font-bold uppercase tracking-widest text-xs">Banque</h4>
+</div>
+<div class="p-8 border border-slate-100 text-center group hover:border-legal-ink transition-all">
+<span class="material-symbols-outlined text-3xl mb-4 block text-slate-300 group-hover:text-legal-ink">security</span>
+<h4 class="font-bold uppercase tracking-widest text-xs">Assurance</h4>
+</div>
+</div>
+<div class="mt-12 text-center p-6 bg-slate-50 border border-dashed border-slate-300">
+<p class="text-xs font-mono text-slate-500">
+                    Utilisez nos plugins officiels ou créez le vôtre avec le <span class="text-legal-ink font-bold">@run-iq/plugin-sdk</span>.
+                </p>
+</div>
+</div>
+</section>
+<section class="py-24 px-8 border-t border-legal-ink/10">
+<div class="max-w-6xl mx-auto grid md:grid-cols-2 gap-20">
+<div class="prose-heavy">
+<h2 class="text-xs font-bold uppercase tracking-[0.3em] text-slate-500 mb-8">The Philosophy</h2>
+<div class="space-y-10">
+<div>
+<h4 class="text-xl font-bold mb-3">Open Source for Sovereignty</h4>
+<p class="text-slate-600 font-serif leading-relaxed">
+                            Transparency is not a feature; it is a requirement for institutional trust. We believe critical infrastructure should be auditable by any citizen or regulator. The core engine remains free, accessible, and community-driven to ensure long-term digital sovereignty.
+                        </p>
+</div>
+<div>
+<h4 class="text-xl font-bold mb-3">Decoupled Knowledge</h4>
+<p class="text-slate-600 font-serif leading-relaxed">
+                            Laws change, tax brackets shift, and compliance norms evolve. Run-IQ treats legal logic as versioned data (Plugins) rather than hardcoded logic. This ensures your infrastructure stays robust even as the legislative world shifts.
+                        </p>
+</div>
+<div>
+<h4 class="text-xl font-bold mb-3">Polyglot Ready</h4>
+<p class="text-slate-600 font-serif leading-relaxed">
+                            Run-IQ is built to be consumed however your enterprise requires. Consommez-le comme une dépendance Node.js ou déployez-le comme un micro-service HTTP. Performance and portability are at our core.
+                        </p>
+</div>
+</div>
+</div>
+<div class="bg-slate-50 p-12 flex flex-col justify-between">
+<div>
+<h2 class="text-xs font-bold uppercase tracking-[0.3em] text-slate-500 mb-8">Trust Center</h2>
+<div class="space-y-12">
+<div class="flex gap-4">
+<span class="material-symbols-outlined text-legal-ink">verified</span>
+<div>
+<h4 class="font-bold">Certification</h4>
+<p class="text-sm text-slate-500 font-serif mt-1">Bientôt : Faites certifier vos plugins par l'organisation Run-IQ pour garantir une conformité totale aux standards institutionnels.</p>
+</div>
+</div>
+<div class="flex gap-4">
+<span class="material-symbols-outlined text-legal-ink">gavel</span>
+<div>
+<h4 class="font-bold">Compliance</h4>
+<p class="text-sm text-slate-500 font-serif mt-1">Explore our roadmap for SOC2, GDPR, and ISO-27001 readiness. Our engine is designed from the ground up to exceed audit requirements.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-12 pt-12 border-t border-slate-200">
+<div class="flex items-center gap-4 grayscale opacity-50">
+<span class="text-[10px] font-mono font-bold tracking-widest text-slate-400">PARTNERS &amp; CONSORTIUMS</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<footer class="bg-legal-ink text-white py-20 px-8">
+<div class="max-w-6xl mx-auto grid md:grid-cols-4 gap-12 text-xs uppercase tracking-[0.2em] font-bold">
+<div class="col-span-1">
+<div class="flex items-center gap-2 mb-8">
+<span class="text-xl font-serif">RUN-IQ</span>
+</div>
+<p class="text-slate-500 normal-case leading-relaxed font-normal italic">
+                The institutional-grade parametric policy engine. Built for a transparent world.
+            </p>
+</div>
+<div>
+<h5 class="text-slate-500 mb-8">Resources</h5>
+<ul class="space-y-4">
+<li><a class="hover:text-slate-300" href="#">Spec v2.4</a></li>
+<li><a class="hover:text-slate-300" href="#">NPM Registry</a></li>
+<li><a class="hover:text-slate-300" href="#">Architecture</a></li>
+</ul>
+</div>
+<div>
+<h5 class="text-slate-500 mb-8">Governance</h5>
+<ul class="space-y-4">
+<li><a class="hover:text-slate-300" href="#">Foundation</a></li>
+<li><a class="hover:text-slate-300" href="#">Board</a></li>
+<li><a class="hover:text-slate-300" href="#">Audits</a></li>
+</ul>
+</div>
+<div>
+<h5 class="text-slate-500 mb-8">Legal</h5>
+<ul class="space-y-4">
+<li><a class="hover:text-slate-300" href="#">Privacy</a></li>
+<li><a class="hover:text-slate-300" href="#">License</a></li>
+<li><a class="hover:text-slate-300" href="#">Security</a></li>
+</ul>
+</div>
+</div>
+<div class="max-w-6xl mx-auto mt-20 pt-8 border-t border-white/10 flex justify-between items-center text-[10px] text-slate-500">
+<p>© 2024 RUN-IQ OPEN SOURCE FOUNDATION. AS-IS WITHOUT WARRANTY.</p>
+<div class="flex gap-4">
+<span class="material-symbols-outlined text-sm">language</span>
+<span class="material-symbols-outlined text-sm">policy</span>
+</div>
+</div>
+</footer>
+
+</body></html>
