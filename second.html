@@ -65,16 +65,49 @@
 
     .nav-link {
       font-size: 11px;
-      font-weight: 600;
+      font-weight: 500;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
-      letter-spacing: 0.15em;
       color: #6b7280;
       text-decoration: none;
-      transition: color 0.15s;
+      position: relative;
+      padding-bottom: 2px;
+      transition: color 0.2s;
+    }
+
+    .nav-link::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 0;
+      height: 1px;
+      background: #0d0d0d;
+      transition: width 0.2s;
     }
 
     .nav-link:hover {
       color: #0d0d0d;
+    }
+
+    .nav-link:hover::after {
+      width: 100%;
+    }
+
+    .nav-doc-btn {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #0d0d0d;
+      text-decoration: none;
+      border-bottom: 2px solid #0d0d0d;
+      padding-bottom: 2px;
+      transition: opacity 0.2s;
+    }
+
+    .nav-doc-btn:hover {
+      opacity: 0.6;
     }
 
     .btn-primary {
@@ -121,6 +154,27 @@
       background: rgba(0, 0, 0, 0.04);
     }
 
+    .btn-outline {
+      padding: 12px 28px;
+      background: transparent;
+      color: #0d0d0d;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      border: 1px solid #0d0d0d;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'Figtree', sans-serif;
+      display: inline-block;
+      text-decoration: none;
+    }
+
+    .btn-outline:hover {
+      background: #0d0d0d;
+      color: #fafaf9;
+    }
+
     /* Hero centered layout */
     .hero-btns {
       display: flex;
@@ -152,7 +206,7 @@
       font-family: 'Crimson Pro', serif;
       font-size: 28px;
       font-weight: 700;
-      font-style: italic;
+      /* font-style: italic; */
     }
 
     .stat-lbl {
@@ -348,13 +402,12 @@
       <nav style="display: flex; gap: 36px; align-items: center;">
         <a class="nav-link" href="#how-it-works">How it works</a>
         <a class="nav-link" href="#plugins">Plugins</a>
-        <a class="nav-link" href="#performance">Performance</a>
+        <a class="nav-link" href="governance.html">Governance</a>
         <a class="nav-link" href="https://github.com/Run-IQ">GitHub</a>
       </nav>
 
-      <div class="flex gap-4">
-        <a href="https://github.com/Run-IQ"
-          class="text-decoration: none; text-xs font-bold uppercase border-b-2 border-legal-ink pb-1">Documentation</a>
+      <div>
+        <a href="#docs" class="nav-doc-btn">Documentation</a>
       </div>
     </div>
   </header>
@@ -364,7 +417,7 @@
     <div style="max-width: 860px; margin: 0 auto;">
 
       <h1
-        style="font-family: 'Crimson Pro', serif; font-size: clamp(52px, 7.5vw, 76px); line-height: 1.08; font-weight: 700; margin-bottom: 28px; letter-spacing: -0.01em; color: #0d0d0d;">
+        style="font-family: 'Crimson Pro', serif; font-size: clamp(52px, 7.5vw, 76px); line-height: 1.08; font-weight: 400; margin-bottom: 28px; letter-spacing: -0.01em; color: #0d0d0d;">
         The Parametric Engine for<br /><em>Regulated Domains.</em>
       </h1>
 
@@ -600,71 +653,67 @@
 
         <div class="guarantee-card reveal">
           <div
-            style="font-family: 'DM Mono', monospace; font-size: 10px; color: #9ca3af; margin-bottom: 12px; letter-spacing: 0.1em;">
-            G-01</div>
-          <h3 style="font-weight: 700; font-size: 16px; margin-bottom: 10px;">Determinism</h3>
+            style="font-family: 'DM Mono', monospace; font-size: 10px; color: #9ca3af; margin-bottom: 12px; letter-spacing: 0.1em; text-transform: uppercase;">
+            Determinism</div>
+          <h3 style="font-weight: 700; font-size: 16px; margin-bottom: 10px;">Same input. Same result. Always.</h3>
           <p style="font-family: 'Crimson Pro', serif; font-size: 15px; color: #4b5563; line-height: 1.6;">
-            Same input × same rules × same engine version = same result. No exceptions. Verified by automated tests on
-            every commit.
+            A computation from 2021 is mathematically identical when replayed today. Same inputs, same engine version,
+            same result — guaranteed by construction.
           </p>
         </div>
 
         <div class="guarantee-card reveal">
           <div
-            style="font-family: 'DM Mono', monospace; font-size: 10px; color: #9ca3af; margin-bottom: 12px; letter-spacing: 0.1em;">
-            G-02</div>
-          <h3 style="font-weight: 700; font-size: 16px; margin-bottom: 10px;">Immutability</h3>
+            style="font-family: 'DM Mono', monospace; font-size: 10px; color: #9ca3af; margin-bottom: 12px; letter-spacing: 0.1em; text-transform: uppercase;">
+            Immutability</div>
+          <h3 style="font-weight: 700; font-size: 16px; margin-bottom: 10px;">Rules cannot mutate in transit.</h3>
           <p style="font-family: 'Crimson Pro', serif; font-size: 15px; color: #4b5563; line-height: 1.6;">
-            Rules are SHA-256 checksummed. Any mutation in transit is detected and the rule is rejected before
-            execution.
+            Rules are strictly read-only throughout the entire pipeline. A SHA-256 checksum is verified at every
+            reception — any tampering is detected immediately.
           </p>
         </div>
 
         <div class="guarantee-card reveal">
           <div
-            style="font-family: 'DM Mono', monospace; font-size: 10px; color: #9ca3af; margin-bottom: 12px; letter-spacing: 0.1em;">
-            G-03</div>
-          <h3 style="font-weight: 700; font-size: 16px; margin-bottom: 10px;">Idempotence</h3>
+            style="font-family: 'DM Mono', monospace; font-size: 10px; color: #9ca3af; margin-bottom: 12px; letter-spacing: 0.1em; text-transform: uppercase;">
+            Idempotence</div>
+          <h3 style="font-weight: 700; font-size: 16px; margin-bottom: 10px;">A requestId runs once. Period.</h3>
           <p style="font-family: 'Crimson Pro', serif; font-size: 15px; color: #4b5563; line-height: 1.6;">
-            <code
-              style="font-family: 'DM Mono', monospace; font-size: 11px; background: #f0f0ec; padding: 1px 5px;">requestId</code>
-            is checked before any computation. Duplicate calls return the existing snapshot — zero recalculation.
+            Network retries and worker re-queues never produce double calculations. The engine checks for an existing
+            snapshot before executing anything.
           </p>
         </div>
 
         <div class="guarantee-card reveal">
           <div
-            style="font-family: 'DM Mono', monospace; font-size: 10px; color: #9ca3af; margin-bottom: 12px; letter-spacing: 0.1em;">
-            G-04</div>
-          <h3 style="font-weight: 700; font-size: 16px; margin-bottom: 10px;">Legal Reproducibility</h3>
+            style="font-family: 'DM Mono', monospace; font-size: 10px; color: #9ca3af; margin-bottom: 12px; letter-spacing: 0.1em; text-transform: uppercase;">
+            Legal Reproducibility</div>
+          <h3 style="font-weight: 700; font-size: 16px; margin-bottom: 10px;">Replay any calculation, years later.</h3>
           <p style="font-family: 'Crimson Pro', serif; font-size: 15px; color: #4b5563; line-height: 1.6;">
-            Snapshots store full rule data — not IDs. Coupled with archived engine + DSL versions, any calculation can
-            be replayed verbatim years later.
+            Snapshots store full rule objects — not IDs. Engine version, plugin versions, DSL evaluators. Everything
+            needed to reproduce the exact result is permanently archived.
           </p>
         </div>
 
         <div class="guarantee-card reveal">
           <div
-            style="font-family: 'DM Mono', monospace; font-size: 10px; color: #9ca3af; margin-bottom: 12px; letter-spacing: 0.1em;">
-            G-05</div>
-          <h3 style="font-weight: 700; font-size: 16px; margin-bottom: 10px;">Decimal Precision</h3>
+            style="font-family: 'DM Mono', monospace; font-size: 10px; color: #9ca3af; margin-bottom: 12px; letter-spacing: 0.1em; text-transform: uppercase;">
+            Decimal Precision</div>
+          <h3 style="font-weight: 700; font-size: 16px; margin-bottom: 10px;">No floating-point surprises.</h3>
           <p style="font-family: 'Crimson Pro', serif; font-size: 15px; color: #4b5563; line-height: 1.6;">
-            All financial arithmetic uses <code
-              style="font-family: 'DM Mono', monospace; font-size: 11px; background: #f0f0ec; padding: 1px 5px;">decimal.js</code>.
-            Native float is prohibited. <code
-              style="font-family: 'DM Mono', monospace; font-size: 11px; background: #f0f0ec; padding: 1px 5px;">0.1 + 0.2 ≠ 0.30...004</code>
-            here.
+            Arithmetic precision is enforced in every financial calculation. Native float representations are strictly
+            prohibited to ensure totals are perfectly predictable.
           </p>
         </div>
 
         <div class="guarantee-card reveal">
           <div
-            style="font-family: 'DM Mono', monospace; font-size: 10px; color: #9ca3af; margin-bottom: 12px; letter-spacing: 0.1em;">
-            G-06</div>
-          <h3 style="font-weight: 700; font-size: 16px; margin-bottom: 10px;">Snapshot Integrity</h3>
+            style="font-family: 'DM Mono', monospace; font-size: 10px; color: #9ca3af; margin-bottom: 12px; letter-spacing: 0.1em; text-transform: uppercase;">
+            Snapshot Integrity</div>
+          <h3 style="font-weight: 700; font-size: 16px; margin-bottom: 10px;">No snapshot. No result.</h3>
           <p style="font-family: 'Crimson Pro', serif; font-size: 15px; color: #4b5563; line-height: 1.6;">
-            In strict mode, the engine withholds the result if the snapshot fails to save. A calculation without an
-            archived trace has no legal value.
+            In strict mode, a snapshot save failure throws before the result is returned. A calculation without an
+            archived legal trace simply does not exist.
           </p>
         </div>
 
@@ -676,43 +725,57 @@
   <section id="plugins" style="padding: 80px 32px; border-bottom: 1px solid #e5e5e0;">
     <div style="max-width: 1100px; margin: 0 auto;">
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: start;">
-        <div>
-          <span class="section-label"> 5 — Plugin Ecosystem</span>
-          <h2
-            style="font-family: 'Crimson Pro', serif; font-size: 36px; font-weight: 700; margin-top: 12px; margin-bottom: 20px;">
-            Domain knowledge,<br />cleanly packaged.</h2>
-          <p
-            style="font-family: 'Crimson Pro', serif; font-size: 17px; color: #4b5563; line-height: 1.6; margin-bottom: 28px;">
-            The engine is MIT and free. Domain plugins carry the regulated knowledge — fiscal brackets, payroll rules,
-            social contributions. They are Source-Available: readable, auditable, commercially licensed.
-          </p>
-          <p
-            style="font-family: 'Crimson Pro', serif; font-size: 17px; color: #4b5563; line-height: 1.6; margin-bottom: 32px;">
-            Build your own with <code
-              style="font-family: 'DM Mono', monospace; font-size: 13px; background: #f5f5f2; padding: 2px 6px;">@run-iq/plugin-sdk</code>.
-            Extend <code
-              style="font-family: 'DM Mono', monospace; font-size: 13px; background: #f5f5f2; padding: 2px 6px;">BasePlugin</code>,
-            declare your models, run <code
-              style="font-family: 'DM Mono', monospace; font-size: 13px; background: #f5f5f2; padding: 2px 6px;">PluginTester</code>
-            to verify PPE conformance.
-          </p>
-          <div class="code-block">
-            <span class="k">import</span> { BasePlugin, BaseModel } <span class="k">from</span> <span
-              class="s">"@run-iq/plugin-sdk"</span>
+        <div style="display: flex; flex-direction: column; justify-content: space-between; height: 100%;">
+          <div>
+            <span class="section-label"> 5 — Plugin Ecosystem</span>
+            <h2
+              style="font-family: 'Crimson Pro', serif; font-size: 36px; font-weight: 700; margin-top: 12px; margin-bottom: 20px;">
+              Domain knowledge,<br />cleanly packaged.</h2>
+            <p
+              style="font-family: 'Crimson Pro', serif; font-size: 17px; color: #4b5563; line-height: 1.6; margin-bottom: 28px;">
+              The engine is MIT and free. Domain plugins carry the regulated knowledge — fiscal brackets, payroll rules,
+              social contributions. They are Source-Available: readable, auditable, commercially licensed.
+            </p>
+            <p
+              style="font-family: 'Crimson Pro', serif; font-size: 17px; color: #4b5563; line-height: 1.6; margin-bottom: 32px;">
+              Build your own with <code
+                style="font-family: 'DM Mono', monospace; font-size: 13px; background: #f5f5f2; padding: 2px 6px;">@run-iq/plugin-sdk</code>.
+              Extend <code
+                style="font-family: 'DM Mono', monospace; font-size: 13px; background: #f5f5f2; padding: 2px 6px;">BasePlugin</code>,
+              declare your models, run <code
+                style="font-family: 'DM Mono', monospace; font-size: 13px; background: #f5f5f2; padding: 2px 6px;">PluginTester</code>
+              to verify PPE conformance.
+            </p>
+          </div>
 
-            <span class="k">class</span> <span class="n">MyModel</span> <span class="k">extends</span> BaseModel {
-            name = <span class="s">"MY_RATE"</span>
-            calculate(input, rule, params): <span class="n">number</span> {
-            <span class="c">// Pure function. Always deterministic.</span>
-            <span class="k">return</span> <span class="k">new</span> Decimal(input[params.base])
-            .mul(params.rate).toNumber()
-            }
-            }
+          <div style="flex-grow: 1; display: flex; flex-direction: column; justify-content: flex-end;">
+            <div
+              style="padding: 32px; background: #fdfdfc; border: 1px dashed #e5e5e0; margin-bottom: 32px; flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
 
-            <span class="k">class</span> <span class="n">MyPlugin</span> <span class="k">extends</span> BasePlugin {
-            name = <span class="s">"@my-org/my-plugin"</span>
-            models = [<span class="k">new</span> MyModel()]
-            }
+              <!-- Refined Abstract Ecosystem SVG -->
+              <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"
+                style="margin-bottom: 20px;">
+                <!-- Central Hub -->
+                <rect x="24" y="24" width="16" height="16" rx="2" stroke="#0d0d0d" stroke-width="1.5" fill="#0d0d0d" />
+                <!-- Connecting lines -->
+                <path d="M40 32H48 M16 32H24 M32 16V24 M32 40V48" stroke="#d1d5db" stroke-width="1.5"
+                  stroke-dasharray="2 2" />
+                <!-- Satellite Modules -->
+                <rect x="48" y="26" width="10" height="12" rx="2" stroke="#6b7280" stroke-width="1.5" />
+                <rect x="6" y="26" width="10" height="12" rx="2" stroke="#6b7280" stroke-width="1.5" />
+                <rect x="26" y="6" width="12" height="10" rx="2" stroke="#e5e5e0" stroke-width="1.5" fill="#fdfdfc" />
+                <rect x="26" y="48" width="12" height="10" rx="2" stroke="#e5e5e0" stroke-width="1.5" fill="#fdfdfc" />
+              </svg>
+
+              <div
+                style="font-family: 'DM Mono', monospace; font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;">
+                Ecosystem Directory</div>
+              <p
+                style="font-family: 'Crimson Pro', serif; font-size: 15px; color: #6b7280; max-width: 260px; margin: 0; line-height: 1.5;">
+                Browse community plugins or submit your own domain logic.</p>
+            </div>
+
+            <a href="#" class="btn-outline" style="align-self: flex-start; margin-top: auto;">View Plugin Directory</a>
           </div>
         </div>
 
@@ -865,82 +928,22 @@
     </div>
   </section>
 
-  <!-- QUICK START CODE -->
-  <section style="padding: 80px 32px; border-bottom: 1px solid #e5e5e0;">
-    <div style="max-width: 1100px; margin: 0 auto;">
-      <div style="margin-bottom: 48px;">
-        <span class="section-label"> 7 — Integration</span>
-        <h2 style="font-family: 'Crimson Pro', serif; font-size: 36px; font-weight: 700; margin-top: 12px;">Integrate in
-          minutes.</h2>
+  <!-- OPEN SOURCE / CONTRIBUTE -->
+  <section style="padding: 40px 32px; border-bottom: 1px solid #e5e5e0; background: white;">
+    <div
+      style="max-width: 1100px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 40px; flex-wrap: wrap;">
+      <div>
+        <span class="section-label" style="display: block; margin-bottom: 8px;">Open Infrastructure</span>
+        <h2 style="font-family: 'Crimson Pro', serif; font-size: 26px; font-weight: 700; line-height: 1.2; margin: 0;">
+          Run-IQ is built in public. <span style="color: #6b7280; font-weight: 400;">Help it grow.</span>
+        </h2>
       </div>
-      <div
-        style="display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: #e5e5e0; border: 1px solid #e5e5e0;">
-        <div>
-          <div
-            style="background: #1a1a1a; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center;">
-            <span
-              style="font-family: 'DM Mono', monospace; font-size: 10px; color: #6b7280; letter-spacing: 0.1em;">engine.ts</span>
-            <span class="tag" style="color: #6b7280; border-color: #333;">TypeScript</span>
-          </div>
-          <div class="code-block" style="border-right: 1px solid #222;">
-            <span class="k">import</span> { PPEEngine } <span class="k">from</span> <span
-              class="s">"@run-iq/core"</span>
-            <span class="k">import</span> { JsonLogicEvaluator } <span class="k">from</span> <span
-              class="s">"@run-iq/dsl-jsonlogic"</span>
-            <span class="k">import</span> { FiscalPlugin } <span class="k">from</span> <span
-              class="s">"@run-iq/plugin-fiscal"</span>
-
-            <span class="k">const</span> engine = <span class="k">new</span> <span class="n">PPEEngine</span>({
-            plugins : [<span class="k">new</span> <span class="n">FiscalPlugin</span>()],
-            dsls : [<span class="k">new</span> <span class="n">JsonLogicEvaluator</span>()],
-            snapshot: <span class="k">new</span> <span class="n">PostgresSnapshotAdapter</span>(db),
-            strict : <span class="k">true</span>,
-            timeout : { dsl: <span class="n">100</span>, hook: <span class="n">500</span> }
-            })
-
-            <span class="c">// Evaluate — snapshot auto-saved</span>
-            <span class="k">const</span> result = <span class="k">await</span> engine.evaluate(rules, {
-            requestId: crypto.randomUUID(),
-            data : { net_taxable_income: <span class="n">2400000</span> },
-            meta : { tenantId: <span class="s">"org-123"</span> }
-            })
-
-            result.value <span class="c">// calculated amount</span>
-            result.snapshotId <span class="c">// archived — legally sealed</span>
-            result.trace <span class="c">// full step-by-step audit</span>
-          </div>
-        </div>
-        <div>
-          <div
-            style="background: #1a1a1a; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center;">
-            <span
-              style="font-family: 'DM Mono', monospace; font-size: 10px; color: #6b7280; letter-spacing: 0.1em;">snapshot.adapter.ts</span>
-            <span class="tag" style="color: #6b7280; border-color: #333;">ISnapshotAdapter</span>
-          </div>
-          <div class="code-block">
-            <span class="c">// Implement once — use any storage</span>
-            <span class="k">class</span> <span class="n">PostgresSnapshotAdapter</span>
-            <span class="k">implements</span> ISnapshotAdapter {
-
-            <span class="k">async</span> save(snapshot: Snapshot) {
-            <span class="k">await</span> db.snapshots.create({ data: snapshot })
-            <span class="k">return</span> snapshot.id
-            }
-
-            <span class="k">async</span> get(id: <span class="n">string</span>) {
-            <span class="k">return</span> db.snapshots.findUniqueOrThrow(
-            { where: { id } }
-            )
-            }
-
-            <span class="k">async</span> exists(requestId: <span class="n">string</span>) {
-            <span class="k">return</span> (<span class="k">await</span> db.snapshots.count(
-            { where: { requestId } }
-            )) > <span class="n">0</span>
-            }
-            }
-          </div>
-        </div>
+      <div style="display: flex; gap: 10px; flex-shrink: 0; flex-wrap: wrap;">
+        <a href="https://github.com/sponsors/Run-IQ" class="btn-primary"
+          style="width: auto; padding: 12px 28px; text-decoration: none; display: inline-block;">Become a Sponsor</a>
+        <a href="https://github.com/Run-IQ" class="btn-secondary"
+          style="width: auto; padding: 12px 28px; text-decoration: none; display: inline-block;">Contribute on
+          GitHub</a>
       </div>
     </div>
   </section>
