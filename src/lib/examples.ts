@@ -139,6 +139,64 @@ export const examples: Record<string, Example> = {
       2
     ),
   },
+  composite: {
+    label: 'Composite — CNSS (Employee + Employer + Injury)',
+    rules: JSON.stringify(
+      [
+        {
+          id: 'rule-cnss-001',
+          model: 'COMPOSITE',
+          version: 1,
+          priority: 3000,
+          tags: ['cnss', 'social-security'],
+          params: {
+            aggregation: 'SUM',
+            steps: [
+              {
+                label: 'Employee (3.6%)',
+                model: 'FLAT_RATE',
+                params: { base: 'gross_salary', rate: 0.036 },
+              },
+              {
+                label: 'Employer (17.5%)',
+                model: 'FLAT_RATE',
+                params: { base: 'gross_salary', rate: 0.175 },
+              },
+              {
+                label: 'Work Injury (2.5%)',
+                model: 'FLAT_RATE',
+                params: { base: 'gross_salary', rate: 0.025 },
+              },
+            ],
+          },
+          checksum:
+            'd1accb8d5b230de914f59a16b11dd426395202a0f12ee4569a726a0ec6d5cd88',
+          effectiveFrom: '2025-01-01',
+          effectiveUntil: null,
+          jurisdiction: 'NATIONAL',
+          scope: 'GLOBAL',
+          country: 'TG',
+          category: 'CNSS',
+        },
+      ],
+      null,
+      2
+    ),
+    input: JSON.stringify(
+      {
+        requestId: 'playground-cnss-001',
+        data: {
+          gross_salary: 450000,
+          country: 'TG',
+        },
+        meta: {
+          tenantId: 'playground',
+        },
+      },
+      null,
+      2
+    ),
+  },
 };
 
 export const exampleKeys = Object.keys(examples) as (keyof typeof examples)[];
