@@ -1,0 +1,311 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-ink: #0d0d0d;
+  --color-paper: #fafaf9;
+  --color-muted: #6b7280;
+  --color-accent: #1a1a1a;
+  --color-rule: #e5e5e0;
+  --color-warm: #f5f5f2;
+
+  --font-serif: 'Crimson Pro', serif;
+  --font-sans: 'Figtree', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+/* Ruled notebook background */
+.ruled-bg {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 31px,
+    #e8e8e3 31px,
+    #e8e8e3 32px
+  );
+}
+
+/* Stamp effect */
+.stamp {
+  display: inline-block;
+  border: 2px solid currentColor;
+  padding: 3px 10px;
+  text-transform: uppercase;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  font-size: 10px;
+  transform: rotate(-4deg);
+  font-family: var(--font-mono);
+}
+
+/* Navigation link with underline on hover */
+.nav-link {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  text-decoration: none;
+  position: relative;
+  padding-bottom: 2px;
+  transition: color 0.2s;
+}
+
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: var(--color-ink);
+  transition: width 0.2s;
+}
+
+.nav-link:hover {
+  color: var(--color-ink);
+}
+
+.nav-link:hover::after {
+  width: 100%;
+}
+
+/* Documentation button in nav */
+.nav-doc-btn {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink);
+  text-decoration: none;
+  border-bottom: 2px solid var(--color-ink);
+  padding-bottom: 2px;
+  transition: opacity 0.2s;
+}
+
+.nav-doc-btn:hover {
+  opacity: 0.6;
+}
+
+/* Primary button */
+.btn-primary {
+  width: 272px;
+  padding: 16px 0;
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  border: 1px solid var(--color-ink);
+  cursor: pointer;
+  transition: background 0.2s;
+  font-family: var(--font-sans);
+  display: block;
+  text-align: center;
+  text-decoration: none;
+}
+
+.btn-primary:hover {
+  background: #1f1f1f;
+}
+
+/* Secondary button */
+.btn-secondary {
+  width: 272px;
+  padding: 16px 0;
+  background: transparent;
+  color: var(--color-ink);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  border: 1px solid var(--color-ink);
+  cursor: pointer;
+  transition: background 0.2s;
+  font-family: var(--font-sans);
+  display: block;
+  text-align: center;
+  text-decoration: none;
+}
+
+.btn-secondary:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+/* Outline button */
+.btn-outline {
+  padding: 12px 28px;
+  background: transparent;
+  color: var(--color-ink);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  border: 1px solid var(--color-ink);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--font-sans);
+  display: inline-block;
+  text-decoration: none;
+}
+
+.btn-outline:hover {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+/* Tag */
+.tag {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 2px 7px;
+  border: 1px solid currentColor;
+}
+
+/* Section label */
+.section-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.25em;
+  color: #9ca3af;
+}
+
+/* Editable input / textarea */
+.editable-input {
+  background: #f8f8f6;
+  border: 1px solid var(--color-rule);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 16px;
+  width: 100%;
+  resize: none;
+  outline: none;
+  transition: border-color 0.15s;
+  line-height: 1.6;
+}
+
+.editable-input:focus {
+  border-color: var(--color-ink);
+}
+
+/* Code block */
+.code-block {
+  background: var(--color-ink);
+  color: var(--color-rule);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.7;
+  padding: 24px;
+  overflow-x: auto;
+}
+
+.code-block .k { color: #a5b4fc; }
+.code-block .s { color: #86efac; }
+.code-block .n { color: #fbbf24; }
+.code-block .c { color: #6b7280; }
+.code-block .p { color: #f472b6; }
+
+/* Guarantee cards */
+.guarantee-card {
+  border: 1px solid var(--color-rule);
+  padding: 24px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  background: var(--color-paper);
+}
+
+.guarantee-card:hover {
+  border-color: var(--color-ink);
+  box-shadow: 4px 4px 0 var(--color-ink);
+}
+
+/* Plugin cards */
+.plugin-card {
+  border: 1px solid var(--color-rule);
+  padding: 20px 24px;
+  transition: all 0.15s;
+}
+
+.plugin-card:hover {
+  border-color: var(--color-ink);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Pipeline animation */
+.pipeline-step {
+  opacity: 0;
+  transform: translateX(-8px);
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+.pipeline-step.active {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.pipeline-step.done .step-dot {
+  background: var(--color-ink) !important;
+}
+
+.pipeline-step.running .step-dot {
+  background: var(--color-ink) !important;
+  animation: pulse 0.6s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Performance bars */
+.perf-bar {
+  height: 4px;
+  background: var(--color-ink);
+  transform-origin: left;
+  transform: scaleX(0);
+  transition: transform 1.2s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.perf-bar.animate {
+  transform: scaleX(1);
+}
+
+/* Scroll reveal */
+.reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.5s, transform 0.5s;
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Styled select */
+select.styled {
+  appearance: none;
+  background: #f8f8f6;
+  border: 1px solid var(--color-rule);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 8px 12px;
+  cursor: pointer;
+  outline: none;
+}
