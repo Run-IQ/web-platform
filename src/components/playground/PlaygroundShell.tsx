@@ -4,10 +4,16 @@ import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { RulesEditor } from './RulesEditor';
 import { InputEditor } from './InputEditor';
+import { FormView } from './FormView';
 import { ResultPanel } from './ResultPanel';
+import { ExplainView } from './ExplainView';
+import { AuditCertificate } from './AuditCertificate';
 import { useEngine } from '@/hooks/useEngine';
 import { examples, exampleKeys } from '@/lib/examples';
 import { Tag } from '@/components/ui/Tag';
+
+type InputMode = 'json' | 'form';
+type ResultMode = 'raw' | 'explain';
 
 export function PlaygroundShell() {
   const [selectedExample, setSelectedExample] = useState(exampleKeys[0]);
@@ -16,6 +22,9 @@ export function PlaygroundShell() {
   const [validationStatus, setValidationStatus] = useState<
     'idle' | 'valid' | 'invalid'
   >('idle');
+  const [inputMode, setInputMode] = useState<InputMode>('json');
+  const [resultMode, setResultMode] = useState<ResultMode>('raw');
+  const [showCertificate, setShowCertificate] = useState(false);
 
   const { result, error, loading, evaluate, validate } = useEngine();
 
@@ -134,31 +143,110 @@ export function PlaygroundShell() {
           </div>
         </div>
 
-        {/* Input editor */}
+        {/* Input panel — JSON or Form */}
         <div className="flex flex-col bg-paper min-h-0">
-          <div className="px-5 py-3 border-b border-rule">
-            <span className="section-label">Input (JSON)</span>
+          <div className="px-5 py-3 border-b border-rule flex items-center justify-between">
+            <span className="section-label">Input</span>
+            <div className="flex items-center bg-[#f5f5f2] border border-[#e5e5e0] rounded overflow-hidden">
+              <button
+                onClick={() => setInputMode('json')}
+                className={`px-3 py-1 font-mono text-[9px] uppercase tracking-wider transition-colors ${
+                  inputMode === 'json'
+                    ? 'bg-ink text-paper'
+                    : 'text-[#9ca3af] hover:text-ink'
+                }`}
+              >
+                JSON
+              </button>
+              <button
+                onClick={() => setInputMode('form')}
+                className={`px-3 py-1 font-mono text-[9px] uppercase tracking-wider transition-colors ${
+                  inputMode === 'form'
+                    ? 'bg-ink text-paper'
+                    : 'text-[#9ca3af] hover:text-ink'
+                }`}
+              >
+                Form
+              </button>
+            </div>
           </div>
           <div className="flex-1 min-h-0">
-            <InputEditor value={inputText} onChange={setInputText} />
+            {inputMode === 'json' ? (
+              <InputEditor value={inputText} onChange={setInputText} />
+            ) : (
+              <FormView inputText={inputText} onChange={setInputText} />
+            )}
           </div>
         </div>
 
         {/* Result panel */}
         <div className="flex flex-col bg-paper min-h-0">
-          <div className="px-5 py-3 border-b border-rule">
+          <div className="px-5 py-3 border-b border-rule flex items-center justify-between">
             <span className="section-label">Result</span>
+            <div className="flex items-center gap-2">
+              {result && (
+                <>
+                  <div className="flex items-center bg-[#f5f5f2] border border-[#e5e5e0] rounded overflow-hidden">
+                    <button
+                      onClick={() => setResultMode('raw')}
+                      className={`px-3 py-1 font-mono text-[9px] uppercase tracking-wider transition-colors ${
+                        resultMode === 'raw'
+                          ? 'bg-ink text-paper'
+                          : 'text-[#9ca3af] hover:text-ink'
+                      }`}
+                    >
+                      Data
+                    </button>
+                    <button
+                      onClick={() => setResultMode('explain')}
+                      className={`px-3 py-1 font-mono text-[9px] uppercase tracking-wider transition-colors ${
+                        resultMode === 'explain'
+                          ? 'bg-ink text-paper'
+                          : 'text-[#9ca3af] hover:text-ink'
+                      }`}
+                    >
+                      Explain
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => setShowCertificate(true)}
+                    className="flex items-center gap-1 px-2 py-1 font-mono text-[9px] text-[#9ca3af] uppercase tracking-wider
+                      border border-[#e5e5e0] rounded hover:border-ink hover:text-ink transition-colors"
+                    title="View audit proof"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    </svg>
+                    Proof
+                  </button>
+                </>
+              )}
+            </div>
           </div>
           <div className="flex-1 min-h-0 overflow-y-auto">
-            <ResultPanel
-              result={result}
-              error={error}
-              loading={loading}
-              validationStatus={validationStatus}
-            />
+            {result && resultMode === 'explain' ? (
+              <ExplainView result={result} />
+            ) : (
+              <ResultPanel
+                result={result}
+                error={error}
+                loading={loading}
+                validationStatus={validationStatus}
+              />
+            )}
           </div>
         </div>
       </div>
+
+      {/* Audit Certificate Modal */}
+      {showCertificate && result && (
+        <AuditCertificate
+          result={result}
+          rulesText={rulesText}
+          inputText={inputText}
+          onClose={() => setShowCertificate(false)}
+        />
+      )}
     </div>
   );
 }
