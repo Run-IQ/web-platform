@@ -1,6 +1,97 @@
 'use client';
 
+import { useState } from 'react';
 import type { EvaluationResult } from '@run-iq/core';
+
+interface BracketDetail {
+  from: number;
+  to: number | null;
+  rate: number;
+  taxable: number;
+  contribution: number;
+}
+
+function DetailView({ detail }: { detail: unknown }) {
+  if (!detail || typeof detail !== 'object') return null;
+  const d = detail as Record<string, unknown>;
+
+  // Progressive bracket breakdown
+  if (Array.isArray(d['brackets'])) {
+    const brackets = d['brackets'] as BracketDetail[];
+    return (
+      <div className="ml-3 mt-1 mb-1 pl-3 border-l border-[#e5e5e0]">
+        {brackets.map((br, j) => (
+          <div key={j} className="flex justify-between text-[9px] text-[#9ca3af] leading-5">
+            <span>
+              {br.from.toLocaleString()}
+              {br.to != null ? ` — ${br.to.toLocaleString()}` : '+'}
+              {' '}@ {(br.rate * 100).toFixed(1)}%
+            </span>
+            <span className="text-[#6b7280]">
+              {br.contribution.toLocaleString()}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Minimum tax detail
+  if (typeof d['appliedMinimum'] === 'boolean') {
+    return (
+      <div className="ml-3 mt-1 text-[9px] text-[#9ca3af] leading-5">
+        <span>computed: {Number(d['computed']).toLocaleString()}</span>
+        {' · '}
+        <span>minimum: {Number(d['minimum']).toLocaleString()}</span>
+        {d['appliedMinimum'] && (
+          <span className="ml-1 text-amber-500">(minimum applied)</span>
+        )}
+      </div>
+    );
+  }
+
+  // Threshold detail
+  if (typeof d['belowThreshold'] === 'boolean') {
+    return (
+      <div className="ml-3 mt-1 text-[9px] text-[#9ca3af] leading-5">
+        <span>threshold: {Number(d['threshold']).toLocaleString()}</span>
+        {d['belowThreshold'] ? (
+          <span className="ml-1 text-[#9ca3af]">(below threshold)</span>
+        ) : (
+          <>
+            {' · '}
+            <span>taxable: {Number(d['taxableAmount']).toLocaleString()}</span>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // Composite steps
+  if (Array.isArray(d['steps'])) {
+    const steps = d['steps'] as Array<{ model: string; label?: string; value: number; detail?: unknown }>;
+    return (
+      <div className="ml-3 mt-1 pl-3 border-l border-[#e5e5e0]">
+        {steps.map((s, j) => (
+          <div key={j}>
+            <div className="flex justify-between text-[9px] text-[#9ca3af] leading-5">
+              <span>{s.label ?? s.model}</span>
+              <span className="text-[#6b7280]">{s.value.toLocaleString()}</span>
+            </div>
+            {s.detail != null && <DetailView detail={s.detail} />}
+          </div>
+        ))}
+        {d['aggregation'] != null && (
+          <div className="text-[8px] text-[#d1d5db] uppercase tracking-wider mt-0.5">
+            {String(d['aggregation'])}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return null;
+}
 
 interface ResultPanelProps {
   result: EvaluationResult | null;
@@ -15,6 +106,8 @@ export function ResultPanel({
   loading,
   validationStatus,
 }: ResultPanelProps) {
+  const [showDetail, setShowDetail] = useState(true);
+
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center font-mono text-xs text-[#9ca3af]">
@@ -70,6 +163,8 @@ export function ResultPanel({
   const breakdown = result.breakdown ?? [];
   const total = result.value ?? 0;
   const trace = result.trace;
+  const hasDetail = breakdown.some((b) => b.detail != null) ||
+    (trace?.steps?.some((s) => s.detail != null) ?? false);
 
   return (
     <div className="h-full p-6 overflow-y-auto">
@@ -90,6 +185,18 @@ export function ResultPanel({
           </div>
         </div>
 
+        {/* Detail toggle */}
+        {hasDetail && (
+          <div className="mb-3">
+            <button
+              onClick={() => setShowDetail((v) => !v)}
+              className="font-mono text-[9px] text-[#9ca3af] tracking-wider uppercase hover:text-ink transition-colors"
+            >
+              {showDetail ? '▾ Hide detail' : '▸ Show detail'}
+            </button>
+          </div>
+        )}
+
         {/* Breakdown */}
         {breakdown.length > 0 && (
           <div className="mb-4">
@@ -97,15 +204,18 @@ export function ResultPanel({
               Breakdown
             </div>
             {breakdown.map((b, i) => (
-              <div key={i} className="flex justify-between mb-1">
-                <span className="text-[#9ca3af] text-[10px]">
-                  {b.label ?? b.ruleId}
-                </span>
-                <span className="text-[#4b5563]">
-                  {typeof b.contribution === 'number'
-                    ? b.contribution.toLocaleString()
-                    : String(b.contribution)}
-                </span>
+              <div key={i} className="mb-2">
+                <div className="flex justify-between mb-0.5">
+                  <span className="text-[#9ca3af] text-[10px]">
+                    {b.label ?? b.ruleId}
+                  </span>
+                  <span className="text-[#4b5563]">
+                    {typeof b.contribution === 'number'
+                      ? b.contribution.toLocaleString()
+                      : String(b.contribution)}
+                  </span>
+                </div>
+                {showDetail && b.detail != null ? <DetailView detail={b.detail} /> : null}
               </div>
             ))}
           </div>
@@ -137,6 +247,7 @@ export function ResultPanel({
                     {step.durationMs}ms
                   </span>
                 )}
+                {showDetail && step.detail != null ? <DetailView detail={step.detail} /> : null}
               </div>
             ))}
           </div>
