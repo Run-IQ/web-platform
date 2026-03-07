@@ -13,11 +13,10 @@ interface BracketDetail {
 
 function DetailView({ detail }: { detail: unknown }) {
   if (!detail || typeof detail !== 'object') return null;
-  const d = detail as Record<string, unknown>;
 
-  // Progressive bracket breakdown
-  if (Array.isArray(d['brackets'])) {
-    const brackets = d['brackets'] as BracketDetail[];
+  // Progressive bracket breakdown (detail is the array directly)
+  if (Array.isArray(detail) && detail.length > 0 && 'rate' in (detail[0] as object)) {
+    const brackets = detail as BracketDetail[];
     return (
       <div className="ml-3 mt-1 mb-1 pl-3 border-l border-[#e5e5e0]">
         {brackets.map((br, j) => (
@@ -35,6 +34,8 @@ function DetailView({ detail }: { detail: unknown }) {
       </div>
     );
   }
+
+  const d = detail as Record<string, unknown>;
 
   // Minimum tax detail
   if (typeof d['appliedMinimum'] === 'boolean') {
@@ -106,7 +107,8 @@ export function ResultPanel({
   loading,
   validationStatus,
 }: ResultPanelProps) {
-  const [showDetail, setShowDetail] = useState(true);
+  const [showBreakdownDetail, setShowBreakdownDetail] = useState(true);
+  const [showTraceDetail, setShowTraceDetail] = useState(false);
 
   if (loading) {
     return (
@@ -163,8 +165,8 @@ export function ResultPanel({
   const breakdown = result.breakdown ?? [];
   const total = result.value ?? 0;
   const trace = result.trace;
-  const hasDetail = breakdown.some((b) => b.detail != null) ||
-    (trace?.steps?.some((s) => s.detail != null) ?? false);
+  const hasBreakdownDetail = breakdown.some((b) => b.detail != null);
+  const hasTraceDetail = trace?.steps?.some((s) => s.detail != null) ?? false;
 
   return (
     <div className="h-full p-6 overflow-y-auto">
@@ -185,23 +187,21 @@ export function ResultPanel({
           </div>
         </div>
 
-        {/* Detail toggle */}
-        {hasDetail && (
-          <div className="mb-3">
-            <button
-              onClick={() => setShowDetail((v) => !v)}
-              className="font-mono text-[9px] text-[#9ca3af] tracking-wider uppercase hover:text-ink transition-colors"
-            >
-              {showDetail ? '▾ Hide detail' : '▸ Show detail'}
-            </button>
-          </div>
-        )}
-
         {/* Breakdown */}
         {breakdown.length > 0 && (
           <div className="mb-4">
-            <div className="font-mono text-[9px] text-[#9ca3af] tracking-wider uppercase mb-2">
-              Breakdown
+            <div className="flex items-center justify-between mb-2">
+              <span className="font-mono text-[9px] text-[#9ca3af] tracking-wider uppercase">
+                Breakdown
+              </span>
+              {hasBreakdownDetail && (
+                <button
+                  onClick={() => setShowBreakdownDetail((v) => !v)}
+                  className="font-mono text-[9px] text-[#9ca3af] tracking-wider uppercase hover:text-ink transition-colors"
+                >
+                  {showBreakdownDetail ? '▾ detail' : '▸ detail'}
+                </button>
+              )}
             </div>
             {breakdown.map((b, i) => (
               <div key={i} className="mb-2">
@@ -215,7 +215,7 @@ export function ResultPanel({
                       : String(b.contribution)}
                   </span>
                 </div>
-                {showDetail && b.detail != null ? <DetailView detail={b.detail} /> : null}
+                {showBreakdownDetail && b.detail != null ? <DetailView detail={b.detail} /> : null}
               </div>
             ))}
           </div>
@@ -232,8 +232,18 @@ export function ResultPanel({
         {/* Trace steps */}
         {trace?.steps && trace.steps.length > 0 && (
           <div className="mt-4 pt-3 border-t border-rule">
-            <div className="font-mono text-[9px] text-[#9ca3af] tracking-wider uppercase mb-2">
-              Trace
+            <div className="flex items-center justify-between mb-2">
+              <span className="font-mono text-[9px] text-[#9ca3af] tracking-wider uppercase">
+                Trace
+              </span>
+              {hasTraceDetail && (
+                <button
+                  onClick={() => setShowTraceDetail((v) => !v)}
+                  className="font-mono text-[9px] text-[#9ca3af] tracking-wider uppercase hover:text-ink transition-colors"
+                >
+                  {showTraceDetail ? '▾ detail' : '▸ detail'}
+                </button>
+              )}
             </div>
             {trace.steps.map((step, i) => (
               <div key={i} className="mb-1 text-[10px]">
@@ -247,7 +257,7 @@ export function ResultPanel({
                     {step.durationMs}ms
                   </span>
                 )}
-                {showDetail && step.detail != null ? <DetailView detail={step.detail} /> : null}
+                {showTraceDetail && step.detail != null ? <DetailView detail={step.detail} /> : null}
               </div>
             ))}
           </div>
