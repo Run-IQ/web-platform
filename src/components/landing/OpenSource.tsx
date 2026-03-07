@@ -2,7 +2,7 @@ import { SectionLabel } from '@/components/ui/SectionLabel';
 
 export function OpenSource() {
   return (
-    <section className="py-10 px-8 border-b border-rule bg-white">
+    <section className="py-10 px-4 md:px-8 border-b border-rule bg-white">
       <div className="max-w-[1100px] mx-auto flex items-center justify-between gap-10 flex-wrap">
         <div>
           <SectionLabel className="block mb-2">

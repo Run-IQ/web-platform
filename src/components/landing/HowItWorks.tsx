@@ -35,7 +35,7 @@ export function HowItWorks() {
     <section
       id="how-it-works"
       ref={sectionRef}
-      className="py-20 px-8 border-b border-rule"
+      className="py-14 md:py-20 px-4 md:px-8 border-b border-rule"
     >
       <div className="max-w-[1100px] mx-auto">
         <div className="mb-14">
@@ -43,7 +43,7 @@ export function HowItWorks() {
           <h2 className="font-serif text-4xl font-bold mt-3">How it works.</h2>
         </div>
 
-        <div className="grid grid-cols-2 gap-16 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-start">
           {/* Left: architecture layers */}
           <div>
             <div className="border border-rule overflow-hidden mb-6">

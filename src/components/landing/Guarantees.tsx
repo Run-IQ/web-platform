@@ -58,7 +58,7 @@ export function Guarantees() {
   }, []);
 
   return (
-    <section ref={sectionRef} className="py-20 px-8 bg-warm border-b border-rule">
+    <section ref={sectionRef} className="py-14 md:py-20 px-4 md:px-8 bg-warm border-b border-rule">
       <div className="max-w-[1100px] mx-auto">
         <div className="mb-12">
           <SectionLabel>4 &mdash; Guarantees</SectionLabel>
@@ -66,7 +66,7 @@ export function Guarantees() {
             What the engine commits to.
           </h2>
         </div>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {GUARANTEES.map((g) => (
             <div key={g.tag} className="guarantee-card reveal">
               <div className="font-mono text-[10px] text-[#9ca3af] mb-3 tracking-wider uppercase">

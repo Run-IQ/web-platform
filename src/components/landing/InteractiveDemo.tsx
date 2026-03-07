@@ -174,7 +174,7 @@ export function InteractiveDemo() {
   };
 
   return (
-    <section className="py-20 px-8 bg-warm border-b border-rule">
+    <section className="py-14 md:py-20 px-4 md:px-8 bg-warm border-b border-rule">
       <div className="max-w-[1100px] mx-auto">
         <div className="mb-12">
           <SectionLabel>2 &mdash; Live Demonstration</SectionLabel>
@@ -186,7 +186,7 @@ export function InteractiveDemo() {
           </p>
         </div>
 
-        <div className="grid grid-cols-3 gap-px bg-rule border border-rule">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-px bg-rule border border-rule">
           {/* Input panel */}
           <div className="bg-paper p-7">
             <div className="flex justify-between items-center mb-4">

@@ -3,9 +3,9 @@ import { Tag } from '@/components/ui/Tag';
 
 export function Plugins() {
   return (
-    <section id="plugins" className="py-20 px-8 border-b border-rule">
+    <section id="plugins" className="py-14 md:py-20 px-4 md:px-8 border-b border-rule">
       <div className="max-w-[1100px] mx-auto">
-        <div className="grid grid-cols-2 gap-16 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-start">
           {/* Left */}
           <div className="flex flex-col justify-between h-full">
             <div>

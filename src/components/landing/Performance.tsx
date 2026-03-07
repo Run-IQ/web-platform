@@ -57,7 +57,7 @@ export function Performance() {
     <section
       id="performance"
       ref={sectionRef}
-      className="py-20 px-8 bg-warm border-b border-rule"
+      className="py-14 md:py-20 px-4 md:px-8 bg-warm border-b border-rule"
     >
       <div className="max-w-[1100px] mx-auto">
         <div className="mb-12">

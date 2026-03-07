@@ -23,9 +23,9 @@ const LEGAL = [
 
 export function Footer() {
   return (
-    <footer className="bg-[#f4f4f1] text-ink border-t border-rule pt-[72px] pb-10 px-8">
+    <footer className="bg-[#f4f4f1] text-ink border-t border-rule pt-12 md:pt-[72px] pb-10 px-4 md:px-8">
       <div className="max-w-[1100px] mx-auto">
-        <div className="grid grid-cols-[2fr_1fr_1fr_1fr] gap-12 mb-16">
+        <div className="grid grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr] gap-8 lg:gap-12 mb-12 md:mb-16">
           {/* Brand */}
           <div>
             <div className="font-serif text-2xl font-bold mb-4 tracking-tight">
@@ -100,7 +100,7 @@ export function Footer() {
         </div>
 
         {/* Bottom */}
-        <div className="border-t border-rule pt-7 flex justify-between items-center">
+        <div className="border-t border-rule pt-7 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
           <p className="font-mono text-[10px] text-[#9ca3af] tracking-wide">
             &copy; 2025 ABDOU-RAOUF ATARMLA &middot; RUN-IQ &middot;
             run-iq.org
