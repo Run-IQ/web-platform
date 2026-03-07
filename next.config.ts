@@ -7,10 +7,9 @@ const nextConfig: NextConfig = {
     unoptimized: true,
   },
   webpack: (config) => {
-    config.resolve.alias['node:crypto'] = path.resolve(
-      __dirname,
-      'src/lib/crypto-shim.ts'
-    );
+    const shimPath = path.resolve(__dirname, 'src/lib/crypto-shim.ts');
+    config.resolve.alias['node:crypto'] = shimPath;
+    config.resolve.alias['crypto'] = shimPath;
     return config;
   },
 };
