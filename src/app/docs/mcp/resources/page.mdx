@@ -1,0 +1,106 @@
+import { Callout } from '@/components/docs/Callout'
+
+# MCP Resources & Prompts
+
+The MCP server exposes **3 resources** (read-only data the LLM can access) and **2 prompts** (pre-built interaction templates). Together, they give the LLM full domain knowledge to generate, validate, and explain Run-IQ rules.
+
+## Resources
+
+### `models://catalog`
+
+A dynamically generated Markdown document listing every registered calculation model with:
+- **Name and version**
+- **Parameter requirements** (inferred from `validateParams({})`)
+- **Description and use cases**
+- **Example params**
+
+The LLM reads this resource to understand which models exist and what parameters they expect before generating rules.
+
+### `plugins://loaded`
+
+JSON document listing currently loaded plugins and DSL evaluators:
+
+```json
+{
+  "plugins": [
+    {
+      "name": "fiscal",
+      "version": "0.2.1",
+      "models": ["FLAT_RATE", "PROGRESSIVE_BRACKET", "MINIMUM_TAX", ...],
+      "hasDescriptor": true,
+      "ruleExtensions": ["jurisdiction", "scope", "country", "category"]
+    }
+  ],
+  "dsls": [
+    { "name": "jsonlogic", "version": "1.0.0" }
+  ]
+}
+```
+
+### `schema://rules`
+
+**THE** complete rule schema reference. This is the most important resource for rule generation. It includes:
+
+1. **Base rule fields** — id, version, model, params, priority, dates, tags, checksum, condition
+2. **Plugin extension fields** — with types, required/optional status, and allowed enum values
+3. **Available calculation models** — with parameter requirements
+4. **Input data fields** — variables available for JSONLogic conditions and model `base` params
+5. **JSONLogic syntax** — common operators and patterns
+6. **Complete rule examples** — from plugin descriptors
+
+<Callout type="tip" title="Best practice for LLMs">
+  Always instruct the LLM to read `schema://rules` before creating rules.
+  The `domain-expert` prompt does this automatically.
+</Callout>
+
+## Prompts
+
+### `analyze-text`
+
+Translates regulatory text (laws, regulations, policies) into Run-IQ rule definitions.
+
+**Arguments:**
+- `source_text` (required) — the legal or policy text to analyze
+- `country` (optional) — ISO country code (e.g. `TG`, `FR`, `US`)
+
+**What it does:**
+1. Injects all available model documentation
+2. Includes plugin extension field requirements
+3. Provides available `input.data` fields with examples
+4. Lists domain-specific guidelines from plugin descriptors
+5. Gives a step-by-step workflow: read → identify → map → create → validate
+
+**Usage example (Claude):**
+
+```
+Use the analyze-text prompt with:
+  source_text: "Article 6 du CGI Togo: L'impôt sur le revenu des personnes physiques est calculé selon un barème progressif..."
+  country: TG
+```
+
+The LLM will then use `create_rule` and `validate_rules` tools to generate valid fiscal rules from the legislative text.
+
+### `domain-expert`
+
+Makes the LLM act as a domain expert for the loaded plugin domains (e.g. "fiscal calculation expertise").
+
+**Arguments:**
+- `question` (required) — the question or scenario to analyze
+
+**What it does:**
+1. Sets the LLM's role as a domain expert
+2. Lists all available tools with descriptions
+3. Points to key resources (`schema://rules`, `models://catalog`, `plugins://loaded`)
+4. Includes domain-specific guidelines from plugin descriptors
+5. Encourages use of `simulate` for scenario comparison
+
+**Usage example (Claude):**
+
+```
+Use the domain-expert prompt with:
+  question: "What would be the total tax burden for a Togolese enterprise with 50M XOF revenue?"
+```
+
+---
+
+Next: [MCP Plugin Loading](/docs/mcp/plugin-loading)
