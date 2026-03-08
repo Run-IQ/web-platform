@@ -187,6 +187,23 @@ export function ResultPanel({
           </div>
         </div>
 
+        {/* Skipped Details */}
+        {result.skippedRules && result.skippedRules.length > 0 && (
+          <div className="mb-4">
+            <div className="font-mono text-[9px] text-[#9ca3af] tracking-wider uppercase mb-2">
+              Skipped Rules
+            </div>
+            <div className="space-y-1">
+              {result.skippedRules.map((s, i) => (
+                <div key={i} className="text-[10px] flex gap-2">
+                  <span className="text-amber-600/70 line-through shrink-0">{s.rule.id}</span>
+                  <span className="text-[#9ca3af] italic truncate">{s.reason}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Breakdown */}
         {breakdown.length > 0 && (
           <div className="mb-4">

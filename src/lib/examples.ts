@@ -25,8 +25,7 @@ export const examples: Record<string, Example> = {
               { from: 3600000, to: null, rate: 0.35 },
             ],
           },
-          checksum:
-            'b083b9e6e874fc21912d2c4193428a35a2092be713697954ccf1216eeb38045e',
+          checksum: 'b083b9e6e874fc21912d2c4193428a35a2092be713697954ccf1216eeb38045e',
           effectiveFrom: '2025-01-01',
           effectiveUntil: null,
           jurisdiction: 'NATIONAL',
@@ -43,11 +42,11 @@ export const examples: Record<string, Example> = {
         requestId: 'playground-irpp-001',
         data: {
           net_taxable_income: 2400000,
-          country: 'TG',
           regime: 'reel',
         },
         meta: {
           tenantId: 'playground',
+          context: { country: 'TG' }
         },
       },
       null,
@@ -68,8 +67,7 @@ export const examples: Record<string, Example> = {
             base: 'taxable_amount',
             rate: 0.18,
           },
-          checksum:
-            '6d29a4417d923e9d7eef601a308550b792e3d44012729ec929366c0ee2606fed',
+          checksum: '6d29a4417d923e9d7eef601a308550b792e3d44012729ec929366c0ee2606fed',
           effectiveFrom: '2025-01-01',
           effectiveUntil: null,
           jurisdiction: 'NATIONAL',
@@ -86,10 +84,10 @@ export const examples: Record<string, Example> = {
         requestId: 'playground-vat-001',
         data: {
           taxable_amount: 5000000,
-          country: 'TG',
         },
         meta: {
           tenantId: 'playground',
+          context: { country: 'TG' }
         },
       },
       null,
@@ -111,8 +109,7 @@ export const examples: Record<string, Example> = {
             rate: 0.01,
             minimum: 500000,
           },
-          checksum:
-            '6726f41e2f9523701085e846481a0055161d4586657c8d0d5c137749bec2a267',
+          checksum: '6726f41e2f9523701085e846481a0055161d4586657c8d0d5c137749bec2a267',
           effectiveFrom: '2025-01-01',
           effectiveUntil: null,
           jurisdiction: 'NATIONAL',
@@ -129,10 +126,10 @@ export const examples: Record<string, Example> = {
         requestId: 'playground-min-001',
         data: {
           turnover: 80000000,
-          country: 'TG',
         },
         meta: {
           tenantId: 'playground',
+          context: { country: 'TG' }
         },
       },
       null,
@@ -169,8 +166,7 @@ export const examples: Record<string, Example> = {
               },
             ],
           },
-          checksum:
-            'd1accb8d5b230de914f59a16b11dd426395202a0f12ee4569a726a0ec6d5cd88',
+          checksum: 'd1accb8d5b230de914f59a16b11dd426395202a0f12ee4569a726a0ec6d5cd88',
           effectiveFrom: '2025-01-01',
           effectiveUntil: null,
           jurisdiction: 'NATIONAL',
@@ -187,10 +183,10 @@ export const examples: Record<string, Example> = {
         requestId: 'playground-cnss-001',
         data: {
           gross_salary: 450000,
-          country: 'TG',
         },
         meta: {
           tenantId: 'playground',
+          context: { country: 'TG' }
         },
       },
       null,
@@ -217,8 +213,7 @@ export const examples: Record<string, Example> = {
               { from: 3600000, to: null, rate: 0.35 },
             ],
           },
-          checksum:
-            'b083b9e6e874fc21912d2c4193428a35a2092be713697954ccf1216eeb38045e',
+          checksum: 'b083b9e6e874fc21912d2c4193428a35a2092be713697954ccf1216eeb38045e',
           effectiveFrom: '2025-01-01',
           effectiveUntil: null,
           jurisdiction: 'NATIONAL',
@@ -252,8 +247,7 @@ export const examples: Record<string, Example> = {
               },
             ],
           },
-          checksum:
-            'd1accb8d5b230de914f59a16b11dd426395202a0f12ee4569a726a0ec6d5cd88',
+          checksum: 'd1accb8d5b230de914f59a16b11dd426395202a0f12ee4569a726a0ec6d5cd88',
           effectiveFrom: '2025-01-01',
           effectiveUntil: null,
           jurisdiction: 'NATIONAL',
@@ -271,8 +265,7 @@ export const examples: Record<string, Example> = {
             base: 'taxable_amount',
             rate: 0.18,
           },
-          checksum:
-            '6d29a4417d923e9d7eef601a308550b792e3d44012729ec929366c0ee2606fed',
+          checksum: '6d29a4417d923e9d7eef601a308550b792e3d44012729ec929366c0ee2606fed',
           effectiveFrom: '2025-01-01',
           effectiveUntil: null,
           jurisdiction: 'NATIONAL',
@@ -291,8 +284,7 @@ export const examples: Record<string, Example> = {
             rate: 0.01,
             minimum: 500000,
           },
-          checksum:
-            '6726f41e2f9523701085e846481a0055161d4586657c8d0d5c137749bec2a267',
+          checksum: '6726f41e2f9523701085e846481a0055161d4586657c8d0d5c137749bec2a267',
           effectiveFrom: '2025-01-01',
           effectiveUntil: null,
           jurisdiction: 'NATIONAL',
@@ -312,8 +304,7 @@ export const examples: Record<string, Example> = {
             rate: 0.0075,
             above_only: false,
           },
-          checksum:
-            'c21ddfdd9e86ae2dad6853da122bdf42c00bc0822940aa11e7f291adb2ebb849',
+          checksum: 'c21ddfdd9e86ae2dad6853da122bdf42c00bc0822940aa11e7f291adb2ebb849',
           effectiveFrom: '2025-01-01',
           effectiveUntil: null,
           jurisdiction: 'NATIONAL',
@@ -331,8 +322,7 @@ export const examples: Record<string, Example> = {
             amount: 5000,
             currency: 'XOF',
           },
-          checksum:
-            '57339395da843742b4d6a27916774a853391f45d4a052069dad858e81e656b1a',
+          checksum: '57339395da843742b4d6a27916774a853391f45d4a052069dad858e81e656b1a',
           effectiveFrom: '2025-01-01',
           effectiveUntil: null,
           jurisdiction: 'NATIONAL',
@@ -352,13 +342,13 @@ export const examples: Record<string, Example> = {
           net_taxable_income: 3750000,
           taxable_amount: 12500000,
           turnover: 85000000,
-          country: 'TG',
           regime: 'reel',
           fiscal_year: 2025,
         },
         meta: {
           tenantId: 'playground',
           scenario: 'full-payroll-simulation',
+          context: { country: 'TG' }
         },
       },
       null,
@@ -379,8 +369,7 @@ export const examples: Record<string, Example> = {
             base: 'revenue',
             rate: 0.18,
           },
-          checksum:
-            'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2',
+          checksum: 'cd56af7b98e0de7f6a383c1bfbe64bd37666943b65f88b9ecf3045baf724328e',
           effectiveFrom: '2025-01-01',
           effectiveUntil: null,
           jurisdiction: 'NATIONAL',
@@ -398,8 +387,7 @@ export const examples: Record<string, Example> = {
             base: 'taxable_profit',
             rate: 0.27,
           },
-          checksum:
-            'b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3',
+          checksum: 'd27b552535046a629c10e0acf569076f9082bcb9c41c733d7d70a385b1763d9a',
           effectiveFrom: '2025-01-01',
           effectiveUntil: null,
           jurisdiction: 'NATIONAL',
@@ -420,8 +408,7 @@ export const examples: Record<string, Example> = {
             dsl: 'jsonlogic',
             value: { '===': [{ var: 'zone' }, 'zone_franche'] },
           },
-          checksum:
-            'c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4',
+          checksum: 'f4f072ef11f27c5fb72b0caeeedb1e769529683453e082e3e659212845d49643',
           effectiveFrom: '2025-01-01',
           effectiveUntil: null,
           jurisdiction: 'NATIONAL',
@@ -440,11 +427,11 @@ export const examples: Record<string, Example> = {
           revenue: 10000000,
           taxable_profit: 3000000,
           zone: 'zone_franche',
-          country: 'TG',
         },
         meta: {
           tenantId: 'playground',
           scenario: 'zone-franche-inhibition',
+          context: { country: 'TG' }
         },
       },
       null,
@@ -465,8 +452,7 @@ export const examples: Record<string, Example> = {
             base: 'revenue',
             rate: 0.18,
           },
-          checksum:
-            'd4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5',
+          checksum: 'cd56af7b98e0de7f6a383c1bfbe64bd37666943b65f88b9ecf3045baf724328e',
           effectiveFrom: '2025-01-01',
           effectiveUntil: null,
           jurisdiction: 'NATIONAL',
@@ -484,8 +470,7 @@ export const examples: Record<string, Example> = {
             base: 'taxable_profit',
             rate: 0.27,
           },
-          checksum:
-            'e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6',
+          checksum: 'd27b552535046a629c10e0acf569076f9082bcb9c41c733d7d70a385b1763d9a',
           effectiveFrom: '2025-01-01',
           effectiveUntil: null,
           jurisdiction: 'NATIONAL',
@@ -504,11 +489,12 @@ export const examples: Record<string, Example> = {
             brackets: [
               { from: 0, to: 900000, rate: 0 },
               { from: 900000, to: 1800000, rate: 0.1 },
-              { from: 1800000, to: null, rate: 0.15 },
+              { from: 1800000, to: 2700000, rate: 0.15 },
+              { from: 2700000, to: 3600000, rate: 0.25 },
+              { from: 3600000, to: null, rate: 0.35 },
             ],
           },
-          checksum:
-            'f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1',
+          checksum: 'b083b9e6e874fc21912d2c4193428a35a2092be713697954ccf1216eeb38045e',
           effectiveFrom: '2025-01-01',
           effectiveUntil: null,
           jurisdiction: 'NATIONAL',
@@ -530,8 +516,7 @@ export const examples: Record<string, Example> = {
             dsl: 'jsonlogic',
             value: { '===': [{ var: 'entity_type' }, 'NGO'] },
           },
-          checksum:
-            'a1a1b2b2c3c3d4d4e5e5f6f6a1a1b2b2c3c3d4d4e5e5f6f6a1a1b2b2c3c3d4d4',
+          checksum: '80a7ea144b19979b7f794304a49fba3209f218745d7a98ffb92f4704b7760004',
           effectiveFrom: '2025-01-01',
           effectiveUntil: null,
           jurisdiction: 'NATIONAL',
@@ -551,11 +536,11 @@ export const examples: Record<string, Example> = {
           taxable_profit: 8000000,
           net_taxable_income: 5000000,
           entity_type: 'NGO',
-          country: 'TG',
         },
         meta: {
           tenantId: 'playground',
           scenario: 'ngo-total-exemption',
+          context: { country: 'TG' }
         },
       },
       null,
