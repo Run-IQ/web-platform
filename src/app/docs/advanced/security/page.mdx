@@ -1,0 +1,123 @@
+import { Callout } from '@/components/docs/Callout'
+
+# Security Model
+
+Run-IQ implements defense-in-depth security across multiple layers. Every evaluation is validated, sandboxed, checksummed, and traced — ensuring that the engine is safe for regulated domains.
+
+## Threat Model
+
+| Threat | Mitigation |
+|---|---|
+| Tampered rules | SHA-256 checksum verification per rule |
+| Tampered snapshots | SHA-256 checksum over entire serialized snapshot |
+| Malicious DSL expressions | Timeout enforcement (default 100ms) + error isolation |
+| Plugin hook abuse | Timeout enforcement (default 500ms) + sandbox |
+| Duplicate evaluations | Idempotence via `requestId` |
+| Floating-point manipulation | Mandatory `decimal.js` for monetary operations |
+| Input injection | `InputSanitizer` validates structure before processing |
+
+## Checksum Verification
+
+### Rule-Level Checksums
+
+Each rule carries a `checksum` field: `SHA-256(JSON.stringify(params))`. The engine recomputes this at evaluation time and compares:
+
+```
+Host creates rule → computes SHA-256(params) → stores as rule.checksum
+Engine evaluates → recomputes SHA-256(params) → compares checksums
+  ✅ Match → rule proceeds
+  ❌ Mismatch → CHECKSUM_MISMATCH (skip or throw based on onChecksumMismatch)
+```
+
+This detects:
+- Rule params tampered after creation
+- Corruption during transit or storage
+- Unauthorized modifications
+
+### Snapshot-Level Checksums
+
+After evaluation, the entire snapshot (input, rules, result, trace) is serialized and checksummed:
+
+```
+checksum = SHA-256(JSON.stringify(serializedSnapshot))
+```
+
+This creates a **tamper-evident seal** — any modification to the snapshot after evaluation is detectable.
+
+## Plugin Sandbox
+
+`PluginSandbox` wraps all plugin interactions with safety mechanisms:
+
+### Timeout Enforcement
+
+```typescript
+const config = {
+  timeout: {
+    dsl: 100,       // 100ms per DSL condition evaluation
+    hook: 500,      // 500ms per plugin hook
+    pipeline: 5000, // 5000ms total pipeline time
+  }
+};
+```
+
+If a hook or DSL evaluation exceeds its timeout:
+- **DSL timeout** → rule skipped with `CONDITION_TIMEOUT`
+- **Hook timeout** → `onError` called, pipeline continues
+
+### Error Isolation
+
+Plugin exceptions never crash the pipeline:
+
+```
+Plugin hook throws →
+  1. Error caught by PluginSandbox
+  2. onError(error, input) called for observation
+  3. Pipeline continues with remaining rules
+```
+
+## Idempotence
+
+Every evaluation has a unique `requestId`. Before any computation:
+
+```
+1. snapshot.exists(requestId) called
+2. If exists → return cached result (zero recalculation)
+3. If not → proceed with evaluation
+4. After evaluation → snapshot.save() with requestId
+```
+
+This prevents:
+- Duplicate tax calculations
+- Double-processing in retry scenarios
+- Race conditions in concurrent systems
+
+<Callout type="info" title="Skipped in dryRun mode">
+  Idempotence checks require a snapshot adapter. In `dryRun: true` mode, 
+  both idempotence checks and snapshot persistence are skipped.
+</Callout>
+
+## Strict vs Lenient Mode
+
+| Behavior | `strict: true` | `strict: false` |
+|---|---|---|
+| Snapshot save fails | `SnapshotFailureError` thrown | Warning logged, result returned |
+| Rule checksum mismatch | Depends on `onChecksumMismatch` | Same |
+| Rule priority conflict | Depends on `onConflict` | Same |
+
+In production, `strict: true` ensures every evaluation has a verifiable audit trail. In development, `strict: false` allows experimentation without requiring a snapshot adapter.
+
+## Input Sanitization
+
+`InputSanitizer` validates every evaluation input before processing:
+
+- `requestId` must be a non-empty string
+- `data` must be a non-null object
+- `meta.tenantId` must be present
+- `effectiveDate` must be a valid Date (if provided)
+- Rule arrays must be non-empty
+
+Invalid input → `ValidationError` thrown immediately, before any computation.
+
+---
+
+Next: [Decimal Arithmetic](/docs/advanced/decimal)
