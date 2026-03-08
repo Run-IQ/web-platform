@@ -2,9 +2,11 @@ import { Callout } from '@/components/docs/Callout'
 
 # MCP Server
 
-`@run-iq/mcp-server` exposes the PPE engine to Large Language Models (Claude, GPT, Gemini) via the [Model Context Protocol](https://modelcontextprotocol.io). It transforms Run-IQ into an **AI-powered fiscal assistant** — LLMs can generate valid rules, evaluate them, and explain results without writing code.
+`@run-iq/mcp-server` exposes the PPE engine to Large Language Models (Claude, GPT, Gemini) via the [Model Context Protocol](https://modelcontextprotocol.io). It transforms Run-IQ into a **domain-aware assistant** — by loading plugins, you give LLMs the power to generate valid rules, evaluate them, and explain results for any regulated domain (tax, insurance, payroll, compliance, etc...) without writing code.
 
 ## Architecture
+
+The MCP server acts as a bridge between the AI and the core engine. It is **domain-agnostic by design**; its intelligence is directly derived from the plugins you load at startup.
 
 ```
 LLM (Claude, GPT, etc.)
@@ -14,7 +16,7 @@ LLM (Claude, GPT, etc.)
   ├── Resources (3)  → models, plugins, schemas
   ├── Prompts (2)    → analyze-text, domain-expert
   └── PPEEngine (dry-run mode)
-        ├── Plugins (loaded dynamically or defaults)
+        ├── Plugins (Loaded dynamically via --plugin or --plugins-dir)
         └── DSLs (JsonLogic, etc.)
 ```
 
@@ -26,8 +28,9 @@ npm install @run-iq/mcp-server
 
 ## Usage with Claude Desktop
 
-Add to your Claude Desktop configuration (`claude_desktop_config.json`):
+To give the AI domain-specific knowledge, you must configure the server with the appropriate plugins.
 
+### Example: Loading a Fiscal Plugin
 ```json
 {
   "mcpServers": {
@@ -44,25 +47,32 @@ Add to your Claude Desktop configuration (`claude_desktop_config.json`):
 }
 ```
 
-For dynamic plugin loading from a directory:
-
+### Example: Loading an Insurance Plugin from a local directory
 ```json
 {
   "mcpServers": {
-    "run-iq": {
+    "run-iq-insurance": {
       "command": "npx",
-      "args": ["-y", "@run-iq/mcp-server", "--plugins-dir", "/path/to/plugins"]
+      "args": ["-y", "@run-iq/mcp-server", "--plugins-dir", "/path/to/plugins/insurance-plugin.bundle.js"]
     }
   }
 }
 ```
+
+## Zero-Config Domain Expertise
+
+When started, the MCP server is an empty shell. Its tools and prompts dynamically adapt to the **Plugin Descriptors** provided by your plugins:
+
+- **Tools** like `create_rule` automatically include the domain-specific extension fields defined in the plugin.
+- **Resources** like `models://catalog` reflect the specific calculation models (e.g., Progressive Tax, Insurance Premium, Payroll Bracket) provided by the loaded domains.
+- **Prompts** use the plugin's domain expertise guidelines to help the AI extract rules from legal texts correctly.
 
 ## Default Configuration
 
 When started without plugins, the server loads an **empty engine**. It is 100% domain-agnostic.
 To give the LLM calculation capabilities, you must pass `--plugin <npm-package>` or `--plugins-dir <local-folder>`.
 
-For most users calculating taxes, passing `--plugin @run-iq/plugin-fiscal` provides:
+For most users calculating taxes for example, passing `--plugin @run-iq/plugin-fiscal` provides:
 - **6 tax calculation models** + 3 meta-models
 - **JsonLogicEvaluator** — standard JSONLogic condition evaluator
 - **fiscalDescriptor** — plugin metadata for schema-aware rule generation
@@ -71,16 +81,18 @@ The engine runs in **dry-run mode** with `onChecksumMismatch: 'skip'` and `onCon
 
 ## Tools (8)
 
+These tools are universal but their behavior is specialized by the loaded plugins:
+
 | Tool | Purpose |
 |---|---|
-| `create_rule` | Generate a valid Rule JSON with auto-computed SHA-256 checksum |
-| `create_checksum` | Compute SHA-256 checksum for rule params |
-| `evaluate` | Evaluate rules against input data (dry-run) |
-| `simulate` | Compare N scenarios using the same rules side-by-side |
-| `validate` | Validate rule structure and params against registered models |
-| `list_models` | List all registered calculation models with descriptions |
-| `inspect_rule` | Analyze a rule's params against its model schema |
-| `explain` | Generate human-readable explanation of an evaluation result |
+| `create_rule` | Generate a valid Rule JSON (includes plugin-specific extension fields) |
+| `evaluate` | Evaluate rules against input data using the loaded calculation models |
+| `list_models` | List all models available from all loaded plugins |
+| `validate` | Check if rules conform to the loaded domain schemas |
+| `explain` | Generate a human-readable explanation of an evaluation result |
+| `simulate` | Run multiple "what-if" scenarios side-by-side |
+| `create_checksum` | Compute SHA-256 for rule parameters integrity |
+| `inspect_rule` | Deep-dive into a rule's parameters against its model schema |
 
 See [MCP Tools Reference](/docs/mcp/tools) for detailed input/output schemas.
 
@@ -99,7 +111,17 @@ See [MCP Tools Reference](/docs/mcp/tools) for detailed input/output schemas.
 | `analyze-text` | Analyze legislative text and extract calculation rules |
 | `domain-expert` | Act as a domain expert for the loaded plugin domains |
 
+
 ## Dynamic Plugin Loading
+
+### Loading plugins from a package (Recommended)
+
+The server is optimized for extensibility. You can add a new domain (e.g., Customs, Healthcare Compliance, HR) simply by passing its NPM package name:
+
+```bash
+npx @run-iq/mcp-server --plugin @my-org/plugin-customs
+```
+### Loading plugins from a local directory
 
 The `--plugins-dir` flag enables runtime discovery of plugin bundles:
 
