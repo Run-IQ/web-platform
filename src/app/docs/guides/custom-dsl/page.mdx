@@ -1,0 +1,166 @@
+import { Callout } from '@/components/docs/Callout'
+
+# Building a DSL Evaluator
+
+This guide walks you through creating a custom DSL (Domain-Specific Language) evaluator for Run-IQ rule conditions. By default, Run-IQ ships with `@run-iq/dsl-jsonlogic`, but you can create evaluators for any expression language.
+
+## The DSLEvaluator Interface
+
+```typescript
+import type { DSLEvaluator } from '@run-iq/core';
+
+export class MyDSLEvaluator implements DSLEvaluator {
+  readonly dsl = 'my-dsl' as const;    // unique identifier
+  readonly version = '1.0.0';           // semver
+
+  evaluate(expression: unknown, context: Record<string, unknown>): boolean {
+    // Your evaluation logic here
+    // Must return boolean (condition met or not)
+  }
+}
+```
+
+### Contract
+
+- `dsl` — Unique string identifier. Rules reference this in `rule.condition.dsl`
+- `version` — Semver string, recorded in snapshots for reproducibility
+- `evaluate()` — Takes an expression (from `rule.condition.value`) and context (`input.data`), returns `boolean`
+- **Must be pure** — no side effects, no network calls, no mutable state
+- **Must be deterministic** — same expression + context = same result, always
+
+## Step-by-Step Example: Simple Expression DSL
+
+Let's build a DSL that evaluates simple comparison expressions like `revenue >= 1000000`.
+
+### Step 1: Define Expression Format
+
+```typescript
+// Expression format: { field: string, op: string, value: number }
+// Example: { "field": "revenue", "op": ">=", "value": 1000000 }
+```
+
+### Step 2: Implement the Evaluator
+
+```typescript
+import type { DSLEvaluator } from '@run-iq/core';
+
+interface SimpleExpression {
+  field: string;
+  op: '>' | '>=' | '<' | '<=' | '==' | '!=';
+  value: number | string | boolean;
+}
+
+export class SimpleExprEvaluator implements DSLEvaluator {
+  readonly dsl = 'simple-expr' as const;
+  readonly version = '1.0.0';
+
+  evaluate(expression: unknown, context: Record<string, unknown>): boolean {
+    const expr = expression as SimpleExpression;
+    const actual = context[expr.field];
+
+    switch (expr.op) {
+      case '>':  return (actual as number) > (expr.value as number);
+      case '>=': return (actual as number) >= (expr.value as number);
+      case '<':  return (actual as number) < (expr.value as number);
+      case '<=': return (actual as number) <= (expr.value as number);
+      case '==': return actual === expr.value;
+      case '!=': return actual !== expr.value;
+      default: return false;
+    }
+  }
+}
+```
+
+### Step 3: Register with Engine
+
+```typescript
+import { PPEEngine } from '@run-iq/core';
+import { SimpleExprEvaluator } from './SimpleExprEvaluator';
+import { JsonLogicEvaluator } from '@run-iq/dsl-jsonlogic';
+
+const engine = new PPEEngine({
+  plugins: [new FiscalPlugin()],
+  dsls: [
+    new JsonLogicEvaluator(),    // Keep existing DSLs
+    new SimpleExprEvaluator(),   // Add yours
+  ],
+});
+```
+
+### Step 4: Use in Rules
+
+```json
+{
+  "id": "high-revenue-tax",
+  "model": "FLAT_RATE",
+  "params": { "rate": 0.25, "base": "revenue" },
+  "condition": {
+    "dsl": "simple-expr",
+    "value": { "field": "revenue", "op": ">=", "value": 10000000 }
+  }
+}
+```
+
+### Step 5: Write Tests
+
+```typescript
+import { describe, it, expect } from 'vitest';
+import { SimpleExprEvaluator } from './SimpleExprEvaluator';
+
+describe('SimpleExprEvaluator', () => {
+  const dsl = new SimpleExprEvaluator();
+
+  it('evaluates greater-than', () => {
+    expect(dsl.evaluate(
+      { field: 'amount', op: '>', value: 100 },
+      { amount: 200 }
+    )).toBe(true);
+  });
+
+  it('returns false when condition not met', () => {
+    expect(dsl.evaluate(
+      { field: 'amount', op: '>', value: 100 },
+      { amount: 50 }
+    )).toBe(false);
+  });
+
+  // Test determinism: same input × 3 = same result
+  it('is deterministic', () => {
+    const expr = { field: 'x', op: '==' as const, value: 42 };
+    const ctx = { x: 42 };
+    const r1 = dsl.evaluate(expr, ctx);
+    const r2 = dsl.evaluate(expr, ctx);
+    const r3 = dsl.evaluate(expr, ctx);
+    expect(r1).toBe(r2);
+    expect(r2).toBe(r3);
+  });
+});
+```
+
+## Including in a PluginBundle
+
+If your DSL is domain-specific, include it in a `PluginBundle` for MCP discovery:
+
+```typescript
+export const myBundle: PluginBundle = {
+  plugin: new MyPlugin(),
+  descriptor: myDescriptor,
+  dsls: [new SimpleExprEvaluator()],
+};
+```
+
+<Callout type="warning" title="Timeout handling">
+  The core engine enforces a timeout (default 100ms) on DSL evaluation.
+  If your evaluator is slow, rules will be skipped with `CONDITION_TIMEOUT`.
+  Keep evaluations fast and avoid complex parsing at runtime.
+</Callout>
+
+## Planned DSLs
+
+Run-IQ's roadmap includes:
+- `@run-iq/dsl-cel` — [Common Expression Language](https://cel.dev/) for enterprise needs
+- `@run-iq/dsl-expr` — Simple expression evaluator for lightweight conditions
+
+---
+
+Next: [Togo CGI 2025 Walkthrough](/docs/guides/togo-cgi)
