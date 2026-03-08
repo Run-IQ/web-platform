@@ -14,7 +14,7 @@ export function Header() {
           <span className="font-serif text-[22px] font-bold tracking-tight">
             RUN-IQ
           </span>
-          <Tag color="#6b7280">v0.2.0-stable</Tag>
+          <Tag color="#6b7280">v0.3.1-stable</Tag>
         </div>
 
         {/* Mobile menu button */}
