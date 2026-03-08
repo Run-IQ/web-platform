@@ -1,0 +1,206 @@
+import { Callout } from '@/components/docs/Callout'
+
+# Real-World: Togo CGI 2025
+
+This walkthrough demonstrates Run-IQ applied to the **Code Général des Impôts (CGI) du Togo 2025** — the actual Togolese tax code. It shows how legal text becomes parameterized rules.
+
+## Overview
+
+The Togolese tax system includes:
+
+| Tax | Model | Rate/Brackets |
+|---|---|---|
+| IRPP (Income Tax) | `PROGRESSIVE_BRACKET` | 0%, 10%, 15%, 25%, 35% |
+| TVA (Value-Added Tax) | `FLAT_RATE` | 18% |
+| IS (Corporate Tax) | `FLAT_RATE` | 27% |
+| IMF (Minimum Tax) | `MINIMUM_TAX` | 1% with floor 500,000 XOF |
+| CNSS (Social Security) | `COMPOSITE` | Employee 3.6% + Employer 17.5% |
+
+## Rule 1: IRPP Progressive Brackets
+
+**CGI Reference:** Article 6, Barème IRPP
+
+```json
+{
+  "id": "tg-irpp-2025",
+  "version": 1,
+  "model": "PROGRESSIVE_BRACKET",
+  "params": {
+    "base": "taxableIncome",
+    "brackets": [
+      { "from": 0, "to": 900000, "rate": 0 },
+      { "from": 900000, "to": 4000000, "rate": 0.10 },
+      { "from": 4000000, "to": 6000000, "rate": 0.15 },
+      { "from": 6000000, "to": 10000000, "rate": 0.25 },
+      { "from": 10000000, "to": null, "rate": 0.35 }
+    ]
+  },
+  "priority": 3000,
+  "effectiveFrom": "2025-01-01T00:00:00.000Z",
+  "effectiveUntil": null,
+  "tags": ["irpp", "togo"],
+  "checksum": "...",
+  "jurisdiction": "NATIONAL",
+  "scope": "GLOBAL",
+  "country": "TG",
+  "category": "IRPP"
+}
+```
+
+### Calculation Example
+
+For a taxable income of **7,500,000 XOF**:
+
+| Bracket | Range | Taxable | Rate | Tax |
+|---|---|---|---|---|
+| 1 | 0 – 900,000 | 900,000 | 0% | 0 |
+| 2 | 900,000 – 4,000,000 | 3,100,000 | 10% | 310,000 |
+| 3 | 4,000,000 – 6,000,000 | 2,000,000 | 15% | 300,000 |
+| 4 | 6,000,000 – 10,000,000 | 1,500,000 | 25% | 375,000 |
+| 5 | 10,000,000+ | 0 | 35% | 0 |
+| **Total** | | | | **985,000 XOF** |
+
+## Rule 2: TVA 18%
+
+**CGI Reference:** Article 178, TVA
+
+```json
+{
+  "id": "tg-tva-2025",
+  "version": 1,
+  "model": "FLAT_RATE",
+  "params": { "rate": 0.18, "base": "revenue" },
+  "priority": 3000,
+  "effectiveFrom": "2025-01-01T00:00:00.000Z",
+  "effectiveUntil": null,
+  "tags": ["tva", "togo"],
+  "checksum": "...",
+  "jurisdiction": "NATIONAL",
+  "scope": "GLOBAL",
+  "country": "TG",
+  "category": "TVA"
+}
+```
+
+5,000,000 × 18% = **900,000 XOF**
+
+## Rule 3: IS Corporate Tax
+
+**CGI Reference:** Article 69, IS
+
+```json
+{
+  "id": "tg-is-2025",
+  "version": 1,
+  "model": "FLAT_RATE",
+  "params": { "rate": 0.27, "base": "taxableProfit" },
+  "priority": 3000,
+  "effectiveFrom": "2025-01-01T00:00:00.000Z",
+  "effectiveUntil": null,
+  "tags": ["is", "togo"],
+  "checksum": "...",
+  "jurisdiction": "NATIONAL",
+  "scope": "GLOBAL",
+  "country": "TG",
+  "category": "IS",
+  "condition": {
+    "dsl": "jsonlogic",
+    "value": { "===": [{ "var": "entityType" }, "enterprise"] }
+  }
+}
+```
+
+## Rule 4: IMF Minimum Tax
+
+**CGI Reference:** Article 127, IMF
+
+```json
+{
+  "id": "tg-imf-2025",
+  "version": 1,
+  "model": "MINIMUM_TAX",
+  "params": { "rate": 0.01, "base": "revenue", "minimum": 500000 },
+  "priority": 3000,
+  "effectiveFrom": "2025-01-01T00:00:00.000Z",
+  "effectiveUntil": null,
+  "tags": ["imf", "togo"],
+  "checksum": "...",
+  "jurisdiction": "NATIONAL",
+  "scope": "GLOBAL",
+  "country": "TG",
+  "category": "IS"
+}
+```
+
+For revenue 30,000,000: MAX(30,000,000 × 1%, 500,000) = MAX(300,000, 500,000) = **500,000 XOF**.
+
+## Rule 5: CNSS Social Security (Composite)
+
+```json
+{
+  "id": "tg-cnss-2025",
+  "version": 1,
+  "model": "COMPOSITE",
+  "params": {
+    "aggregation": "SUM",
+    "steps": [
+      { "model": "FLAT_RATE", "params": { "rate": 0.036, "base": "grossSalary" }, "label": "Employee CNSS" },
+      { "model": "FLAT_RATE", "params": { "rate": 0.175, "base": "grossSalary" }, "label": "Employer CNSS" },
+      { "model": "FLAT_RATE", "params": { "rate": 0.025, "base": "grossSalary" }, "label": "Work Injury" }
+    ]
+  },
+  "priority": 3000,
+  "effectiveFrom": "2025-01-01T00:00:00.000Z",
+  "effectiveUntil": null,
+  "tags": ["cnss", "togo"],
+  "checksum": "...",
+  "jurisdiction": "NATIONAL",
+  "scope": "GLOBAL",
+  "country": "TG",
+  "category": "CNSS"
+}
+```
+
+For grossSalary 2,500,000:
+- Employee: 2,500,000 × 3.6% = 90,000
+- Employer: 2,500,000 × 17.5% = 437,500
+- Injury: 2,500,000 × 2.5% = 62,500
+- **Total CNSS: 590,000 XOF**
+
+## Full Evaluation Example
+
+```typescript
+const engine = new PPEEngine({
+  plugins: [new FiscalPlugin()],
+  dsls: [new JsonLogicEvaluator()],
+  dryRun: true,
+});
+
+const rules = [irppRule, tvaRule, isRule, imfRule, cnssRule];
+
+const result = await engine.evaluate(rules, {
+  requestId: 'togo-2025-001',
+  data: {
+    taxableIncome: 7500000,
+    grossSalary: 2500000,
+    revenue: 50000000,
+    taxableProfit: 15000000,
+    entityType: 'enterprise',
+  },
+  meta: {
+    tenantId: 'togo-dgfi',
+    context: { country: 'TG' },
+    effectiveDate: new Date('2025-06-15'),
+  },
+});
+```
+
+<Callout type="info" title="Source of truth">
+  All rates and brackets in this walkthrough come from the official
+  **Code Général des Impôts du Togo (CGI 2025)**. Run-IQ's test suite
+  validates against these exact figures.
+</Callout>
+
+---
+
+Back to [Documentation Home](/docs)
