@@ -1,0 +1,112 @@
+import { Callout } from '@/components/docs/Callout'
+
+# Decimal Arithmetic
+
+In fiscal and financial computation, floating-point precision errors are **illegal**. Run-IQ mandates `decimal.js` for all monetary operations in calculation models.
+
+## The Problem
+
+JavaScript uses IEEE 754 double-precision floating point:
+
+```javascript
+0.1 + 0.2   // → 0.30000000000000004  ❌
+0.18 * 5000 // → 900.0000000000001    ❌
+```
+
+In a tax engine, these errors compound across thousands of rules and produce results that don't match the law's exact rates and brackets.
+
+## The Solution
+
+All model calculations use `decimal.js`:
+
+```typescript
+import Decimal from 'decimal.js';
+
+// ❌ NEVER do this in a model
+const tax = amount * rate;
+
+// ✅ Always do this
+const tax = new Decimal(amount).mul(rate).toNumber();
+```
+
+## Common Patterns
+
+### Flat Rate
+
+```typescript
+calculate(input, rule, params) {
+  const base = new Decimal(input.data[params.base] as number);
+  return base.mul(params.rate).toNumber();
+}
+// 5000000 × 0.18 = 900000 (exact)
+```
+
+### Progressive Brackets
+
+```typescript
+let total = new Decimal(0);
+for (const bracket of params.brackets) {
+  const taxable = new Decimal(bracket.to ?? income)
+    .minus(bracket.from)
+    .clampedTo(0, new Decimal(income).minus(bracket.from));
+  total = total.plus(taxable.mul(bracket.rate));
+}
+return total.toNumber();
+```
+
+### Minimum Tax
+
+```typescript
+const computed = new Decimal(baseValue).mul(params.rate);
+const minimum = new Decimal(params.minimum);
+return Decimal.max(computed, minimum).toNumber();
+// MAX(base × rate, minimum) — exact
+```
+
+### Comparison and Threshold
+
+```typescript
+const base = new Decimal(input.data[params.base] as number);
+const threshold = new Decimal(params.threshold);
+
+if (base.lessThan(threshold)) return 0;
+
+const taxable = params.above_only
+  ? base.minus(threshold)
+  : base;
+return taxable.mul(params.rate).toNumber();
+```
+
+## Snapshot Storage
+
+Monetary values in snapshots are stored as **strings**, not numbers:
+
+```json
+{
+  "breakdown": [
+    { "ruleId": "tg-irpp-2025", "contribution": "287500" }
+  ]
+}
+```
+
+This preserves exact precision through JSON serialization. `JSON.parse()` → `Number()` → `Decimal()` is a safe round-trip for values within safe integer range.
+
+<Callout type="warning" title="Non-negotiable">
+  Using native `number` arithmetic on monetary amounts in a model is a violation
+  of the PPE specification. Code reviews should reject any model that doesn't
+  use `decimal.js`.
+</Callout>
+
+## Summary
+
+| Context | Use |
+|---|---|
+| Model `calculate()` | `new Decimal(x).mul(y).toNumber()` |
+| Snapshot storage | String representation |
+| Comparison | `Decimal.greaterThan()`, `Decimal.lessThan()` |
+| Aggregation | `Decimal.plus()` accumulator |
+| Display | `.toFixed(2)` for currencies |
+
+---
+
+Next: [Determinism & Reproducibility](/docs/advanced/determinism)
