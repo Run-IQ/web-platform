@@ -1,0 +1,115 @@
+import { Callout } from '@/components/docs/Callout'
+
+# SchemaValidator
+
+`SchemaValidator` is a lightweight, zero-dependency validation utility from `@run-iq/plugin-sdk`. It validates model parameters against a declarative schema, producing human-readable error messages.
+
+## Usage
+
+```typescript
+import { SchemaValidator } from '@run-iq/plugin-sdk';
+import type { ValidationResult } from '@run-iq/core';
+
+class FlatRateModel extends BaseModel {
+  readonly name = 'FLAT_RATE' as const;
+  readonly version = '1.0.0';
+
+  validateParams(params: unknown): ValidationResult {
+    return SchemaValidator.validate(params, {
+      rate: { type: 'number', min: 0, max: 1 },
+      base: { type: 'string' },
+    });
+  }
+  // ...
+}
+```
+
+## `SchemaValidator.validate(params, schema)`
+
+The main validation method. Takes arbitrary `params` and a `SchemaDefinition`, returns a `ValidationResult`.
+
+```typescript
+type SchemaDefinition = Record<string, SchemaFieldDef>;
+
+interface SchemaFieldDef {
+  type: 'number' | 'string' | 'boolean' | 'array' | 'object';
+  min?: number;       // For numbers: minimum value
+  max?: number;       // For numbers: maximum value
+  enum?: string[];    // For strings: allowed values
+  required?: boolean; // Default: true
+}
+```
+
+### Validation Rules
+
+| Type | Checks |
+|---|---|
+| `number` | `typeof === 'number'`, not NaN, `>= min`, `<= max` |
+| `string` | `typeof === 'string'`, value in `enum` (if specified) |
+| `boolean` | `typeof === 'boolean'` |
+| `array` | `Array.isArray()` |
+| `object` | `typeof === 'object'` and not array |
+
+**Required fields** (default `true`): If the field is `undefined` or `null` and `required !== false`, an error is added.
+
+### Error Messages
+
+Error messages are human-readable and follow the pattern:
+
+```
+"rate" is required
+"rate" must be a number
+"rate" must be >= 0
+"rate" must be <= 1
+"jurisdiction" must be one of: NATIONAL, REGIONAL, MUNICIPAL
+```
+
+<Callout type="info" title="MCP integration">
+  The `list_models` MCP tool parses these error messages to auto-generate
+  parameter schemas. Consistent formatting is important.
+</Callout>
+
+## Utility Methods
+
+For quick inline checks without the full schema machinery:
+
+### `SchemaValidator.number(value, opts?)`
+
+```typescript
+SchemaValidator.number(42);                    // true
+SchemaValidator.number('42');                   // false
+SchemaValidator.number(0.5, { min: 0, max: 1 }); // true
+SchemaValidator.number(-1, { min: 0 });         // false
+```
+
+### `SchemaValidator.string(value, opts?)`
+
+```typescript
+SchemaValidator.string('hello');                              // true
+SchemaValidator.string('TG', { enum: ['TG', 'FR', 'US'] }); // true
+SchemaValidator.string('XX', { enum: ['TG', 'FR', 'US'] }); // false
+```
+
+### `SchemaValidator.positiveNumber(value)`
+
+Shorthand for `number(value, { min: 0 })`.
+
+### `SchemaValidator.rate(value)`
+
+Shorthand for `number(value, { min: 0, max: 1 })`. Use for tax rates, percentages, and ratios.
+
+## Real-World Example
+
+```typescript
+// From plugin-fiscal: ProgressiveBracketModel
+validateParams(params: unknown): ValidationResult {
+  return SchemaValidator.validate(params, {
+    base: { type: 'string' },
+    brackets: { type: 'array' },
+  });
+}
+```
+
+---
+
+Next: [PluginTester](/docs/sdk/plugin-tester)
