@@ -1,0 +1,155 @@
+import { Callout } from '@/components/docs/Callout'
+
+# MCP Tools Reference
+
+The MCP server exposes 8 tools that LLMs call to interact with Run-IQ. Each tool accepts structured inputs validated by Zod schemas and returns JSON responses.
+
+## create_rule
+
+Generate a valid Rule JSON with auto-computed SHA-256 checksum. Dynamically includes plugin-specific extension fields based on loaded plugins.
+
+**Input:**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `id` | `string` | ✅ | Unique rule identifier |
+| `model` | `string` | ✅ | Model name (e.g. `FLAT_RATE`) |
+| `params` | `object` | ✅ | Model parameters |
+| `effectiveFrom` | `string` | ✅ | ISO 8601 start date |
+| `priority` | `number` | — | Default: `1000` |
+| `effectiveUntil` | `string \| null` | — | End date or null for indefinite |
+| `tags` | `string[]` | — | Default: `[]` |
+| `condition` | `object` | — | DSL condition `{ dsl, value }` |
+| *extension fields* | varies | — | Plugin-specific fields (e.g. `jurisdiction`, `scope`, `country`) |
+
+**Output:** A complete Rule JSON with auto-computed `checksum` and `version: 1`.
+
+<Callout type="info" title="Dynamic schema">
+  The input schema adapts to loaded plugins. When `plugin-fiscal` is loaded,
+  fields like `jurisdiction`, `scope`, `country`, and `category` are added automatically
+  from the plugin's `PluginDescriptor.ruleExtensions`.
+</Callout>
+
+## create_checksum
+
+Compute the SHA-256 checksum for a params object.
+
+**Input:** `{ params: Record<string, unknown> }`
+
+**Output:** `{ checksum: "9982c778..." }`
+
+## evaluate
+
+Evaluate rules against input data in dry-run mode. Returns the computed value, breakdown, applied/skipped rules, and trace.
+
+**Input:**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `rules` | `Rule[]` | ✅ | Array of Rule JSON objects |
+| `input.data` | `object` | ✅ | Input data for evaluation |
+| `input.requestId` | `string` | ✅ | Unique request ID |
+| `input.meta.tenantId` | `string` | ✅ | Tenant identifier |
+| `input.meta.userId` | `string` | — | User identifier |
+| `input.meta.tags` | `string[]` | — | Tags for rule filtering |
+| `input.meta.context` | `object` | — | Additional context (e.g. `{ country: "TG" }`) |
+| `input.meta.effectiveDate` | `string` | — | ISO 8601 date |
+
+**Output:** Serialized `EvaluationResult` with value, breakdown, applied/skipped rules (simplified), and trace timing.
+
+## simulate
+
+Compare N scenarios using the same ruleset. Evaluates each scenario independently and returns side-by-side results.
+
+**Input:**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `rules` | `Rule[]` | ✅ | Shared rules across all scenarios |
+| `scenarios` | `Scenario[]` | ✅ | `[{ label, input: EvaluationInput }]` |
+
+**Output:** Array of `{ label, value, appliedCount, skippedCount, breakdown }` per scenario.
+
+**Example use case:** Compare IRPP for three different salary levels:
+
+```json
+{
+  "rules": [/* IRPP progressive brackets */],
+  "scenarios": [
+    { "label": "Low income",  "input": { "data": { "grossSalary": 1000000 }, ... } },
+    { "label": "Mid income",  "input": { "data": { "grossSalary": 5000000 }, ... } },
+    { "label": "High income", "input": { "data": { "grossSalary": 20000000 }, ... } }
+  ]
+}
+```
+
+## validate_rules
+
+Validate the structure, checksum, model params, and plugin extension fields of rules.
+
+**Input:** `{ rules: Rule[] }`
+
+**Validation checks:**
+1. **Structure** — Required fields via Zod schema
+2. **Checksum** — Recomputes SHA-256 and compares to stored checksum
+3. **Model** — Checks model exists in registry and validates params
+4. **Extensions** — Validates plugin-specific fields against descriptors
+
+**Output:** Array of `{ ruleId, valid, errors? }` per rule.
+
+## list_models
+
+List all registered calculation models. Takes no input.
+
+**Output:**
+
+```json
+{
+  "models": [
+    { "name": "FLAT_RATE", "version": "1.0.0", "paramsSchema": { "rate": "number between 0 and 1", "base": "non-empty string" } },
+    { "name": "PROGRESSIVE_BRACKET", "version": "1.0.0", "paramsSchema": { "base": "non-empty string", "brackets": "non-empty array" } }
+  ]
+}
+```
+
+<Callout type="info" title="Schema inference">
+  Parameter schemas are inferred by calling `model.validateParams({})` with an empty object
+  and parsing the error messages. This works automatically for all models using `SchemaValidator`.
+</Callout>
+
+## inspect_rule
+
+Deep-analyze a single rule: checksum validity, model existence, param validation, date activity, and extension field correctness.
+
+**Input:** `{ rule: Rule }`
+
+**Output:**
+
+```json
+{
+  "ruleId": "tg-irpp-2025",
+  "valid": true,
+  "checksumMatch": true,
+  "modelFound": true,
+  "isActive": true,
+  "effectivePeriod": { "from": "2025-01-01T...", "until": null }
+}
+```
+
+If errors exist, `paramErrors` and/or `extensionErrors` arrays are included.
+
+## explain_result
+
+Generate a human-readable Markdown explanation of an evaluation result.
+
+**Input:** `{ result: EvaluationResult }` — accepts both full results and simplified results from the `evaluate` tool.
+
+**Output:** A Markdown document with:
+- **Total Value**
+- **Applied Rules** — with model, priority, and contribution per rule
+- **Skipped Rules** — with skip reason
+- **Timing** — total duration in milliseconds
+
+---
+
+Next: [MCP Resources & Prompts](/docs/mcp/resources)
