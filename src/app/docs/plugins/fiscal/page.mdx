@@ -39,7 +39,12 @@ See [Calculation Models](/docs/concepts/models) for detailed documentation of ea
 
 The fiscal plugin's `beforeEvaluate` hook performs five operations:
 
-1.  **Meta-rule condition evaluation**: Evaluates DSL conditions for meta-rules against the raw input data.
+1.  **Meta-rule condition evaluation**: Evaluates DSL conditions for meta-rules against the raw input data. 
+
+<Callout type="info" title="Full DSL Power">
+  Meta-rule conditions are no longer parsed manually. They use the **full DSL engine** (e.g., JsonLogic, CEL) registered in the engine context. This allows for complex logic within inhibitions and substitutions.
+</Callout>
+
 2.  **Meta-rule processing**: Passes the rules and condition results through the `<Tag>MetaRuleProcessor</Tag>`, which short-circuits, inhibits, or substitutes regular fiscal rules.
 3.  **Short-circuit handling**: If `META_SHORT_CIRCUIT` matched, immediately returns an empty rules array and a special marker.
 4.  **Jurisdiction precedence**: Resolves priorities for remaining rules based on jurisdiction level and scope.

@@ -80,7 +80,13 @@ This allows you to have a TVA rule and an IS rule both at priority `3000` withou
 
 ### `priority` — Dominance Order
 
-Priority determines evaluation order (higher = first). Combined with `dominanceGroup`, it provides granular control over which rule wins in a specific category.
+Priority determines evaluation order (higher = first).
+
+<Callout type="info" title="Sovereign Priority">
+  If you provide an explicit `priority` in the rule JSON (e.g., `priority: 1234`), the engine will respect it exactly. Automatic calculation (such as by jurisdiction) only triggers if the priority field is missing or null.
+</Callout>
+
+Combined with `dominanceGroup`, it provides granular control over which rule wins in a specific category.
 
 <Callout type="tip" title="Additive by default">
   If you don't provide a `dominanceGroup`, the engine treats each rule as its own unique group, allowing multiple rules to coexist at the same priority level.
@@ -129,7 +135,13 @@ Rules are only considered if the evaluation date falls within their `[effectiveF
 
 ### `checksum` — Integrity Verification
 
-The checksum is a SHA-256 hash of `JSON.stringify(params)`. It's computed once when the rule is created and stored alongside it. At evaluation time, the engine re-computes the hash and compares — any mismatch indicates the rule's parameters were modified after approval.
+The checksum is a SHA-256 hash of the parameters. It's computed once when the rule is created and stored alongside it. 
+
+<Callout type="info" title="Canonical Hashing">
+  The engine uses **canonical serialization**: all keys in the `params` object are recursively sorted alphabetically before hashing. This makes the checksum robust against different property orders in the JSON input.
+</Callout>
+
+At evaluation time, the engine re-computes the hash and compares — any mismatch indicates the rule's parameters were modified after approval.
 
 ### `tags` — Filtering Labels
 

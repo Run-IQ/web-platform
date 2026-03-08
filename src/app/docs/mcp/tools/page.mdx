@@ -4,6 +4,10 @@ import { Callout } from '@/components/docs/Callout'
 
 The MCP server exposes 8 tools that LLMs call to interact with Run-IQ. Each tool accepts structured inputs validated by Zod schemas and returns JSON responses.
 
+<Callout type="tip" title="Input Sanitization">
+  The server includes a global **Input Sanitizer** that recursively cleans all inputs (including rule parameters and context). It automatically handles common AI formatting issues like double-escaped quotes (e.g., `""value""` → `"value"`), ensuring robust integration with various LLM clients.
+</Callout>
+
 ## create_rule
 
 Generate a valid Rule JSON with auto-computed SHA-256 checksum. Dynamically includes plugin-specific extension fields based on loaded plugins.
