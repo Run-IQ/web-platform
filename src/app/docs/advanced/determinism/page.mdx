@@ -1,0 +1,119 @@
+import { Callout } from '@/components/docs/Callout'
+
+# Determinism & Reproducibility
+
+Run-IQ guarantees that the **same input + same rules = same result**, always. This is the foundation of auditability and legal compliance.
+
+## What Makes PPE Deterministic
+
+### No Runtime Dependencies
+
+Models are pure functions. The following are **forbidden** in `calculate()`:
+
+```typescript
+// ❌ All of these violate determinism
+Date.now()          // time-dependent
+Math.random()       // non-deterministic
+fetch(...)          // network-dependent
+globalCounter++     // mutable state
+process.env.RATE    // environment-dependent
+```
+
+### Immutable Input Chain
+
+Plugin hooks return **new objects**, never mutating input:
+
+```typescript
+// ✅ Deterministic — pure transformation
+beforeEvaluate(input, rules) {
+  return { ...input, meta: { ...input.meta, enriched: true } };
+}
+```
+
+### Fixed Evaluation Order
+
+1. Rules sorted by priority (descending) — deterministic ordering
+2. Plugin hooks called in registration order — deterministic chain
+3. DSL conditions evaluated in rule order — deterministic filtering
+
+## Reproducibility
+
+### Version Pinning
+
+Every `EvaluationResult` records the exact software versions used:
+
+```typescript
+interface EvaluationResult {
+  engineVersion: string;          // "@run-iq/core" version
+  pluginVersions: Record<string, string>;  // { "fiscal": "0.2.1" }
+  dslVersions: Record<string, string>;     // { "jsonlogic": "1.0.0" }
+}
+```
+
+To reproduce a past evaluation:
+1. Install the exact versions from the snapshot
+2. Feed the `inputSnapshot` and `rulesSnapshot` to the engine
+3. Result must be bit-for-bit identical
+
+### Snapshot as Proof
+
+A snapshot contains **everything** needed for replay:
+
+```
+Snapshot
+├── inputSnapshot    → exact input.data, input.meta
+├── rulesSnapshot    → complete rules (not IDs)
+├── result           → full EvaluationResult
+├── trace            → step-by-step execution log
+├── engineVersion    → core version
+├── pluginVersions   → plugin versions
+├── dslVersions      → DSL versions
+├── checksum         → SHA-256 of serialized snapshot
+└── timestamp        → evaluation time
+```
+
+<Callout type="info" title="Rules are copied, not referenced">
+  Snapshots store complete rule objects, not rule IDs. This ensures
+  reproductibility even if the rule store changes or rules are updated — the
+  snapshot always contains the exact rules that were evaluated.
+</Callout>
+
+### Monetary Precision
+
+Monetary values use `decimal.js` and are serialized as **strings** in snapshots. This eliminates JSON floating-point drift:
+
+```json
+{ "contribution": "287500" }  // ✅ Exact
+{ "contribution": 287500.00000000003 }  // ❌ Never happens
+```
+
+## Edge Cases
+
+### Effective Date
+
+If no `effectiveDate` is provided in `input.meta`, the engine uses the current date. For **reproducible** evaluations, always provide an explicit `effectiveDate`:
+
+```typescript
+const input = {
+  data: { ... },
+  requestId: 'eval-001',
+  meta: {
+    tenantId: 't1',
+    effectiveDate: new Date('2025-06-15'), // ← explicit
+  },
+};
+```
+
+### Conflict Resolution
+
+When two rules have the same priority:
+- `onConflict: 'throw'` → deterministic: always throws `RuleConflictError`
+- `onConflict: 'first'` → deterministic: always picks the first rule in array order
+
+### DSL Timeout
+
+If a DSL condition times out, the rule is skipped with `CONDITION_TIMEOUT`. This is deterministic given the same timeout configuration.
+
+---
+
+Next: [Jurisdiction Resolution](/docs/advanced/jurisdiction)
