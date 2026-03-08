@@ -1,0 +1,174 @@
+import { Callout } from '@/components/docs/Callout'
+
+# REST Server
+
+`@run-iq/server` wraps the PPE engine behind a Fastify HTTP server. It exposes a single `/evaluate` endpoint for polyglot and non-Node integrations — any language that can make HTTP requests can use Run-IQ.
+
+## Installation
+
+```bash
+npm install @run-iq/server
+```
+
+Dependencies: `@run-iq/core`, `fastify`.
+
+## Quick Start
+
+```typescript
+import { start } from '@run-iq/server';
+import { FiscalPlugin } from '@run-iq/plugin-fiscal';
+import { JsonLogicEvaluator } from '@run-iq/dsl-jsonlogic';
+
+await start({
+  port: 3000,
+  plugins: [new FiscalPlugin()],
+  dsls: [new JsonLogicEvaluator()],
+  strict: true,
+});
+```
+
+The server listens on `0.0.0.0:3000` by default. SIGINT and SIGTERM trigger graceful shutdown.
+
+## API Endpoints
+
+### `GET /health`
+
+Returns engine status:
+
+```json
+{ "status": "ok", "engine": "0.1.2" }
+```
+
+### `POST /evaluate`
+
+Evaluates rules against input data. The request body mirrors the `engine.evaluate()` parameters:
+
+**Request:**
+
+```json
+{
+  "rules": [
+    {
+      "id": "tg-tva-2025",
+      "version": 1,
+      "model": "FLAT_RATE",
+      "params": { "rate": 0.18, "base": "revenue" },
+      "priority": 1000,
+      "effectiveFrom": "2025-01-01T00:00:00.000Z",
+      "effectiveUntil": null,
+      "tags": ["tva"],
+      "checksum": "..."
+    }
+  ],
+  "input": {
+    "requestId": "req-001",
+    "data": { "revenue": 5000000 },
+    "meta": {
+      "tenantId": "tenant-1",
+      "context": { "country": "TG" }
+    }
+  }
+}
+```
+
+**Response 200:** full `EvaluationResult` JSON (value, breakdown, trace, snapshotId, etc.)
+
+### Date Hydration
+
+The server automatically converts ISO 8601 date strings in rules (`effectiveFrom`, `effectiveUntil`) and input (`meta.effectiveDate`) to `Date` objects via `hydrateRules()`. You send strings, the engine receives proper dates.
+
+## Error Mapping
+
+The server maps PPE errors to appropriate HTTP status codes:
+
+| HTTP Status | PPE Error | When |
+|---|---|---|
+| 400 | `ValidationError` | Malformed input, missing required fields |
+| 400 | Fastify validation | Request body schema violation |
+| 409 | `RuleConflictError` | Rules share same priority in strict mode |
+| 422 | Other `PPEError` | DSL errors, model errors, etc. |
+| 503 | `SnapshotFailureError` | Snapshot `save()` failed in strict mode |
+| 500 | Unexpected error | Unhandled exceptions |
+
+Error response format:
+
+```json
+{
+  "error": "Rule Conflict",
+  "message": "Rule conflict: rules [rule-a, rule-b] have the same priority 3000",
+  "code": "RULE_CONFLICT",
+  "ruleIds": ["rule-a", "rule-b"],
+  "statusCode": 409
+}
+```
+
+## Configuration
+
+```typescript
+interface ServerConfig {
+  port: number;              // default: 3000
+  host: string;              // default: '0.0.0.0'
+  plugins: PPEPlugin[];      // required
+  dsls: DSLEvaluator[];      // required
+  snapshot?: ISnapshotAdapter; // optional — enables persistence
+  strict?: boolean;          // default: true
+  timeout?: {
+    dsl?: number;            // default: 100ms
+    hook?: number;           // default: 500ms
+    pipeline?: number;       // default: 5000ms
+  };
+  logLevel?: 'info' | 'warn' | 'error' | 'silent'; // default: 'info'
+}
+```
+
+<Callout type="info" title="Automatic dryRun">
+  When no `snapshot` adapter is provided, the server automatically sets `dryRun: true` on the engine. No snapshot persistence is attempted.
+</Callout>
+
+## Programmatic Usage
+
+Use `createApp()` for testing or embedding:
+
+```typescript
+import { createApp } from '@run-iq/server';
+
+const app = createApp({
+  plugins: [new FiscalPlugin()],
+  dsls: [new JsonLogicEvaluator()],
+  logLevel: 'silent',
+});
+
+// Use Fastify's inject() for integration tests
+const response = await app.inject({
+  method: 'POST',
+  url: '/evaluate',
+  payload: {
+    rules: [/* ... */],
+    input: { requestId: 'test-1', data: { revenue: 1000000 }, meta: { tenantId: 't1' } },
+  },
+});
+
+const result = JSON.parse(response.body);
+console.log(result.value); // → 180000
+```
+
+<Callout type="tip" title="CI/CD">
+  Use `createApp()` with `app.inject()` in your CI pipeline to test rule evaluations without starting a real HTTP server.
+</Callout>
+
+## Docker
+
+```dockerfile
+FROM node:20-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --production
+COPY . .
+RUN npm run build
+EXPOSE 3000
+CMD ["node", "dist/index.js"]
+```
+
+---
+
+Next: [CLI](/docs/integrations/cli)
