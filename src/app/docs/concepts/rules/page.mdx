@@ -14,6 +14,7 @@ interface Rule {
   params: unknown;               // Model-specific parameters
   condition?: Expression;        // When to apply this rule
   priority: number;              // Dominance ordering (higher = evaluated first)
+  dominanceGroup?: string;       // Conflict group (e.g., "TVA", "IS")
   effectiveFrom: Date;           // Rule is active from this date
   effectiveUntil: Date | null;   // Rule expires after this date (null = no expiry)
   tags: readonly string[];       // Labels for filtering
@@ -67,6 +68,24 @@ Each model defines its own parameter schema. The engine passes `params` to the m
 }
 ```
 
+### `dominanceGroup` — Smart Conflict Resolution
+
+The `dominanceGroup` (often mapped to a `category` like "TVA" or "CNSS") defines the scope of a conflict. 
+
+When multiple rules share the same **priority**, the engine checks their group:
+- **Different Groups**: The rules are considered independent and are both applied (additive behavior).
+- **Same Group**: The rules are in conflict. The engine keeps the first one and skips the others (or throws in strict mode).
+
+This allows you to have a TVA rule and an IS rule both at priority `3000` without them fighting each other.
+
+### `priority` — Dominance Order
+
+Priority determines evaluation order (higher = first). Combined with `dominanceGroup`, it provides granular control over which rule wins in a specific category.
+
+<Callout type="tip" title="Additive by default">
+  If you don't provide a `dominanceGroup`, the engine treats each rule as its own unique group, allowing multiple rules to coexist at the same priority level.
+</Callout>
+
 ### `condition` — When to Apply
 
 A rule's condition is evaluated by a DSL evaluator. The condition contains:
@@ -114,7 +133,11 @@ The checksum is a SHA-256 hash of `JSON.stringify(params)`. It's computed once w
 
 ### `tags` — Filtering Labels
 
-Tags allow the host application to filter rules before evaluation. Pass tags in `input.meta.tags`:
+Tags allow the host application to filter rules before evaluation. Pass tags in `input.meta.tags`.
+
+<Callout type="tip" title="Environmental Filtering">
+  For environmental filters like `country` or `currency`, it is best practice to use **meta.context**. The Fiscal Plugin, for example, expects `meta.context.country` to selectively activate rules.
+</Callout>
 
 ```typescript
 // Only evaluate rules tagged "irpp" or "tva"
@@ -124,6 +147,7 @@ const input = {
   meta: {
     tenantId: 'my-company',
     tags: ['irpp', 'tva'],
+    context: { country: 'TG' }
   },
 };
 await engine.evaluate(rules, input);

@@ -48,17 +48,19 @@ This prevents duplicate computation when the same evaluation is requested multip
 
 ## Step 3: beforeEvaluate Hooks
 
-Plugin hooks are called in registration order. Each receives the current input and the full rule set, and returns a **new** `BeforeEvaluateResult` containing the (potentially modified) input and rules:
+Plugin hooks are called in registration order. Each receives the current input and the full rule set, and returns a **new** `BeforeEvaluateResult` (synchronously or via a `Promise`) containing the potentially modified input, rules, and **any rules explicitly skipped by the plugin**.
 
 ```typescript
-let currentInput = input;
-let currentRules = rules;
-
 for (const plugin of plugins) {
   if (plugin.beforeEvaluate) {
-    const result = plugin.beforeEvaluate(currentInput, currentRules);
+    const result = await plugin.beforeEvaluate(currentInput, currentRules);
     currentInput = result.input;
     currentRules = result.rules;
+    
+    // Plugins can now officially report skipped rules (Inhibitions, Country Mismatch, etc.)
+    if (result.skipped) {
+      allSkipped.push(...result.skipped);
+    }
   }
 }
 ```
@@ -114,16 +116,16 @@ If the model specified by `rule.model` is not found in the `ModelRegistry`, a `M
 
 ## Step 6: Dominance Resolution
 
-Rules are sorted by `priority` in descending order (highest priority first).
+Rules are sorted by `priority` in descending order.
 
 ### Conflict detection
-When two or more rules share the same priority:
+A conflict occurs only when two or more rules share both the same **priority** AND the same **dominanceGroup**.
 
-- `onConflict: 'throw'` — throws `RuleConflictError` with the conflicting rule IDs
-- `onConflict: 'first'` — picks the first rule encountered, discards the rest
+- `onConflict: 'throw'` — throws `RuleConflictError` with the conflicting rule IDs.
+- `onConflict: 'first'` — picks the first rule in the group, and skips the others with reason `RULE_CONFLICT`.
 
-<Callout type="warning" title="Default behavior">
-  When `strict: true`, `onConflict` defaults to `'throw'`. When `strict: false`, it defaults to `'first'`.
+<Callout type="info" title="Independence">
+  Rules with the same priority but different dominance groups (e.g., one for TVA, one for IS) are considered independent and are both kept for execution.
 </Callout>
 
 ## Step 7: Execution
@@ -232,6 +234,9 @@ The full trace also records `totalDurationMs` — end-to-end pipeline time.
 | `INVALID_PARAMS` | `model.validateParams()` returned `valid: false` |
 | `TAG_MISMATCH` | Rule tags don't intersect with `input.meta.tags` |
 | `INHIBITED_BY_META_RULE` | Suppressed by a meta-rule in `beforeEvaluate` |
+| `COUNTRY_MISMATCH` | Rule's country property does not match `meta.context.country` |
+| `SHORT_CIRCUITED` | Evaluation was stopped early (e.g., by a meta-rule) |
+| `RULE_CONFLICT` | Rule was skipped during Step 6 because of priority/group conflict |
 
 ---
 
