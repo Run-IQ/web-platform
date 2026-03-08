@@ -50,4 +50,43 @@ export const docsNav: NavGroup[] = [
       { title: 'JSONLogic', href: '/docs/dsl/jsonlogic' },
     ],
   },
+  {
+    label: 'Integrations',
+    items: [
+      { title: 'REST Server', href: '/docs/integrations/server' },
+      { title: 'CLI', href: '/docs/integrations/cli' },
+      { title: 'MCP Server', href: '/docs/integrations/mcp' },
+    ],
+  },
+  {
+    label: 'MCP Reference',
+    items: [
+      { title: 'Tools', href: '/docs/mcp/tools' },
+      { title: 'Resources & Prompts', href: '/docs/mcp/resources' },
+      { title: 'Plugin Loading', href: '/docs/mcp/plugin-loading' },
+    ],
+  },
+  {
+    label: 'SDK Reference',
+    items: [
+      { title: 'SchemaValidator', href: '/docs/sdk/schema-validator' },
+      { title: 'PluginTester', href: '/docs/sdk/plugin-tester' },
+    ],
+  },
+  {
+    label: 'Advanced',
+    items: [
+      { title: 'Security Model', href: '/docs/advanced/security' },
+      { title: 'Decimal Arithmetic', href: '/docs/advanced/decimal' },
+      { title: 'Determinism', href: '/docs/advanced/determinism' },
+      { title: 'Jurisdiction Resolution', href: '/docs/advanced/jurisdiction' },
+    ],
+  },
+  {
+    label: 'Guides',
+    items: [
+      { title: 'Building a DSL', href: '/docs/guides/custom-dsl' },
+      { title: 'Togo CGI 2025', href: '/docs/guides/togo-cgi' },
+    ],
+  },
 ];
