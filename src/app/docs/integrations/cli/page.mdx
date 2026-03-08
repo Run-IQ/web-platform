@@ -1,0 +1,152 @@
+import { Callout } from '@/components/docs/Callout'
+
+# CLI
+
+`@run-iq/cli` is a command-line tool for testing and debugging PPE rules locally. It reads rules and input from JSON files and outputs evaluation results in multiple formats.
+
+## Installation
+
+```bash
+npm install -g @run-iq/cli
+```
+
+After installation, the `run-iq` command is available globally.
+
+## Commands
+
+### `run-iq evaluate`
+
+Evaluate rules against input data:
+
+```bash
+run-iq evaluate --rules rules.json --input input.json
+```
+
+**Options:**
+
+| Option | Default | Description |
+|---|---|---|
+| `--rules <path>` | required | Path to rules JSON file |
+| `--input <path>` | required | Path to input JSON file |
+| `--format <fmt>` | `table` | Output format: `json`, `table`, `compact` |
+| `--dry-run` | `true` | Run without snapshot persistence |
+| `--strict` | `false` | Enable strict mode |
+
+**Output formats:**
+
+```bash
+# Structured table (default)
+run-iq evaluate --rules r.json --input i.json --format table
+
+# Raw JSON (for piping to jq or other tools)
+run-iq evaluate --rules r.json --input i.json --format json
+
+# Compact one-liner
+run-iq evaluate --rules r.json --input i.json --format compact
+```
+
+### `run-iq validate`
+
+Validate rule structure without evaluating:
+
+```bash
+run-iq validate --rules rules.json
+```
+
+Checks required fields, types, and checksum format:
+
+```
+=== Rule Validation ===
+  [OK  ] tg-irpp-2025
+  [OK  ] tg-tva-2025
+  [FAIL] broken-rule
+         - checksum must be a non-empty string
+2/3 rules valid
+```
+
+## File Formats
+
+### rules.json
+
+An array of Rule objects:
+
+```json
+[
+  {
+    "id": "tg-tva-2025",
+    "version": 1,
+    "model": "FLAT_RATE",
+    "params": { "rate": 0.18, "base": "revenue" },
+    "priority": 1000,
+    "effectiveFrom": "2025-01-01T00:00:00.000Z",
+    "effectiveUntil": null,
+    "tags": ["tva"],
+    "checksum": "9982c778..."
+  }
+]
+```
+
+### input.json
+
+A single EvaluationInput object:
+
+```json
+{
+  "requestId": "eval-001",
+  "data": { "revenue": 5000000 },
+  "meta": {
+    "tenantId": "tenant-1",
+    "context": { "country": "TG" }
+  }
+}
+```
+
+## Exit Codes
+
+| Code | Meaning |
+|---|---|
+| 0 | Success — evaluation completed |
+| 1 | Evaluation or validation error (rule conflict, model not found, etc.) |
+| 2 | File not found or JSON parse error |
+
+<Callout type="tip" title="CI/CD integration">
+  Use exit codes in your CI pipeline: `run-iq validate --rules rules.json --format json || exit 1`
+</Callout>
+
+## Programmatic Usage
+
+```typescript
+import { createCli } from '@run-iq/cli';
+
+const cli = createCli({
+  stdout: (msg) => myLogger.info(msg),
+  stderr: (msg) => myLogger.error(msg),
+});
+
+await cli.parseAsync([
+  'node', 'run-iq', 'evaluate',
+  '--rules', 'rules.json',
+  '--input', 'input.json',
+  '--format', 'json',
+]);
+```
+
+## Utility Exports
+
+The CLI also exports its internal utilities for reuse:
+
+```typescript
+import { loadRules, loadInput } from '@run-iq/cli';
+import { formatResult, formatValidation } from '@run-iq/cli';
+
+// Load and parse JSON files
+const rules = loadRules('path/to/rules.json');
+const input = loadInput('path/to/input.json');
+
+// Format evaluation results
+const output = formatResult(result, 'table');
+```
+
+---
+
+Next: [MCP Server](/docs/integrations/mcp)
