@@ -33,7 +33,12 @@ Add to your Claude Desktop configuration (`claude_desktop_config.json`):
   "mcpServers": {
     "run-iq": {
       "command": "npx",
-      "args": ["-y", "@run-iq/mcp-server"]
+      "args": [
+        "-y",
+        "@run-iq/mcp-server",
+        "--plugin",
+        "@run-iq/plugin-fiscal"
+      ]
     }
   }
 }
@@ -54,18 +59,15 @@ For dynamic plugin loading from a directory:
 
 ## Default Configuration
 
-When started without `--plugins-dir`, the server loads:
-- **FiscalPlugin** — 6 tax calculation models + 3 meta-models
+When started without plugins, the server loads an **empty engine**. It is 100% domain-agnostic.
+To give the LLM calculation capabilities, you must pass `--plugin <npm-package>` or `--plugins-dir <local-folder>`.
+
+For most users calculating taxes, passing `--plugin @run-iq/plugin-fiscal` provides:
+- **6 tax calculation models** + 3 meta-models
 - **JsonLogicEvaluator** — standard JSONLogic condition evaluator
 - **fiscalDescriptor** — plugin metadata for schema-aware rule generation
 
 The engine runs in **dry-run mode** with `onChecksumMismatch: 'skip'` and `onConflict: 'first'` — optimized for AI experimentation.
-
-<Callout type="info" title="Why fiscal by default?">
-  The fiscal plugin ships as a default so the MCP server works out-of-the-box
-  for the most common use case. With `--plugins-dir`, you can load any domain
-  (payroll, insurance, etc.) without recompiling.
-</Callout>
 
 ## Tools (8)
 
