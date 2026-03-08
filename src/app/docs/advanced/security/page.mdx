@@ -25,8 +25,8 @@ Each rule carries a `checksum` field: `SHA-256(JSON.stringify(params))`. The eng
 ```
 Host creates rule → computes SHA-256(params) → stores as rule.checksum
 Engine evaluates → recomputes SHA-256(params) → compares checksums
-  ✅ Match → rule proceeds
-  ❌ Mismatch → CHECKSUM_MISMATCH (skip or throw based on onChecksumMismatch)
+  Match → rule proceeds
+  Mismatch → CHECKSUM_MISMATCH (skip or throw based on onChecksumMismatch)
 ```
 
 This detects:

@@ -12,10 +12,10 @@ Generate a valid Rule JSON with auto-computed SHA-256 checksum. Dynamically incl
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `id` | `string` | ✅ | Unique rule identifier |
-| `model` | `string` | ✅ | Model name (e.g. `FLAT_RATE`) |
-| `params` | `object` | ✅ | Model parameters |
-| `effectiveFrom` | `string` | ✅ | ISO 8601 start date |
+| `id` | `string` | Yes | Unique rule identifier |
+| `model` | `string` | Yes | Model name (e.g. `FLAT_RATE`) |
+| `params` | `object` | Yes | Model parameters |
+| `effectiveFrom` | `string` | Yes | ISO 8601 start date |
 | `priority` | `number` | — | Default: `1000` |
 | `effectiveUntil` | `string \| null` | — | End date or null for indefinite |
 | `tags` | `string[]` | — | Default: `[]` |
@@ -46,10 +46,10 @@ Evaluate rules against input data in dry-run mode. Returns the computed value, b
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `rules` | `Rule[]` | ✅ | Array of Rule JSON objects |
-| `input.data` | `object` | ✅ | Input data for evaluation |
-| `input.requestId` | `string` | ✅ | Unique request ID |
-| `input.meta.tenantId` | `string` | ✅ | Tenant identifier |
+| `rules` | `Rule[]` | Yes | Array of Rule JSON objects |
+| `input.data` | `object` | Yes | Input data for evaluation |
+| `input.requestId` | `string` | Yes | Unique request ID |
+| `input.meta.tenantId` | `string` | Yes | Tenant identifier |
 | `input.meta.userId` | `string` | — | User identifier |
 | `input.meta.tags` | `string[]` | — | Tags for rule filtering |
 | `input.meta.context` | `object` | — | Additional context (e.g. `{ country: "TG" }`) |
@@ -65,8 +65,8 @@ Compare N scenarios using the same ruleset. Evaluates each scenario independentl
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `rules` | `Rule[]` | ✅ | Shared rules across all scenarios |
-| `scenarios` | `Scenario[]` | ✅ | `[{ label, input: EvaluationInput }]` |
+| `rules` | `Rule[]` | Yes | Shared rules across all scenarios |
+| `scenarios` | `Scenario[]` | Yes | `[{ label, input: EvaluationInput }]` |
 
 **Output:** Array of `{ label, value, appliedCount, skippedCount, breakdown }` per scenario.
 

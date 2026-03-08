@@ -24,8 +24,8 @@ Calls `beforeEvaluate()` **3 times** with identical input and rules. All 3 resul
 
 ```typescript
 await tester.assertDeterminism(input, rules, context);
-// ✅ 3 calls → same result
-// ❌ Throws: "Determinism violation: different results for same input"
+// 3 calls → same result
+// Throws: "Determinism violation: different results for same input"
 ```
 
 ### `assertImmutability(input, rules)`
@@ -34,8 +34,8 @@ Creates deep copies of `input` and `rules` before calling `beforeEvaluate()`. Af
 
 ```typescript
 await tester.assertImmutability(input, rules);
-// ✅ input and rules unchanged
-// ❌ Throws: "Immutability violation: beforeEvaluate mutated input"
+// input and rules unchanged
+// Throws: "Immutability violation: beforeEvaluate mutated input"
 ```
 
 ### `assertParamsValidation(modelName, invalidParams, context)`
@@ -49,8 +49,8 @@ await tester.assertParamsValidation('FLAT_RATE', [
   { rate: 2, base: 'x' },      // Rate > 1
   { rate: 0.1 },                // Missing base
 ], context);
-// ✅ All rejected
-// ❌ Throws: 'Expected model "FLAT_RATE" to reject params: ...'
+// All rejected
+// Throws: 'Expected model "FLAT_RATE" to reject params: ...'
 ```
 
 ### `assertNoSideEffects(input, rules)`
@@ -59,8 +59,8 @@ Calls `beforeEvaluate()` **twice** and compares results. If results differ (indi
 
 ```typescript
 await tester.assertNoSideEffects(input, rules);
-// ✅ Two calls → same result
-// ❌ Throws: "Side effects detected: different results between calls"
+// Two calls → same result
+// Throws: "Side effects detected: different results between calls"
 ```
 
 ## `runAll(input, rules, context)`

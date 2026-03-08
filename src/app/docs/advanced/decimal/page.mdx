@@ -9,8 +9,8 @@ In fiscal and financial computation, floating-point precision errors are **illeg
 JavaScript uses IEEE 754 double-precision floating point:
 
 ```javascript
-0.1 + 0.2   // → 0.30000000000000004  ❌
-0.18 * 5000 // → 900.0000000000001    ❌
+0.1 + 0.2   // → 0.30000000000000004  (Incorrect)
+0.18 * 5000 // → 900.0000000000001    (Incorrect)
 ```
 
 In a tax engine, these errors compound across thousands of rules and produce results that don't match the law's exact rates and brackets.
@@ -22,10 +22,10 @@ All model calculations use `decimal.js`:
 ```typescript
 import Decimal from 'decimal.js';
 
-// ❌ NEVER do this in a model
+// NEVER do this in a model
 const tax = amount * rate;
 
-// ✅ Always do this
+// Always do this
 const tax = new Decimal(amount).mul(rate).toNumber();
 ```
 

@@ -11,7 +11,7 @@ Run-IQ guarantees that the **same input + same rules = same result**, always. Th
 Models are pure functions. The following are **forbidden** in `calculate()`:
 
 ```typescript
-// ❌ All of these violate determinism
+// All of these violate determinism
 Date.now()          // time-dependent
 Math.random()       // non-deterministic
 fetch(...)          // network-dependent
@@ -24,7 +24,7 @@ process.env.RATE    // environment-dependent
 Plugin hooks return **new objects**, never mutating input:
 
 ```typescript
-// ✅ Deterministic — pure transformation
+// Deterministic — pure transformation
 beforeEvaluate(input, rules) {
   return { ...input, meta: { ...input.meta, enriched: true } };
 }
@@ -83,8 +83,8 @@ Snapshot
 Monetary values use `decimal.js` and are serialized as **strings** in snapshots. This eliminates JSON floating-point drift:
 
 ```json
-{ "contribution": "287500" }  // ✅ Exact
-{ "contribution": 287500.00000000003 }  // ❌ Never happens
+{ "contribution": "287500" }  // Exact
+{ "contribution": 287500.00000000003 }  // Never happens
 ```
 
 ## Edge Cases
