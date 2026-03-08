@@ -1,0 +1,119 @@
+import { Callout } from '@/components/docs/Callout'
+
+# PluginTester
+
+`PluginTester` from `@run-iq/plugin-sdk` provides automated compliance tests for PPE plugins. It verifies the four core contracts: **determinism**, **immutability**, **parameter validation**, and **side-effect freedom**.
+
+## Quick Start
+
+```typescript
+import { PluginTester } from '@run-iq/plugin-sdk';
+import { FiscalPlugin } from '@run-iq/plugin-fiscal';
+
+const tester = new PluginTester(new FiscalPlugin());
+
+const report = await tester.runAll(input, rules, context);
+console.log(report.summary); // 'PASS' or 'FAIL'
+```
+
+## Assertion Methods
+
+### `assertDeterminism(input, rules, context)`
+
+Calls `beforeEvaluate()` **3 times** with identical input and rules. All 3 results must be identical (JSON deep equality). Catches non-deterministic behavior from `Date.now()`, `Math.random()`, or mutable state.
+
+```typescript
+await tester.assertDeterminism(input, rules, context);
+// ✅ 3 calls → same result
+// ❌ Throws: "Determinism violation: different results for same input"
+```
+
+### `assertImmutability(input, rules)`
+
+Creates deep copies of `input` and `rules` before calling `beforeEvaluate()`. After the call, compares originals against copies. Any mutation is detected.
+
+```typescript
+await tester.assertImmutability(input, rules);
+// ✅ input and rules unchanged
+// ❌ Throws: "Immutability violation: beforeEvaluate mutated input"
+```
+
+### `assertParamsValidation(modelName, invalidParams, context)`
+
+Verifies that the model's `validateParams()` correctly **rejects** an array of invalid parameter objects. If any invalid params are accepted, the test fails.
+
+```typescript
+await tester.assertParamsValidation('FLAT_RATE', [
+  {},                           // Missing all fields
+  { rate: 'not-a-number' },     // Wrong type
+  { rate: 2, base: 'x' },      // Rate > 1
+  { rate: 0.1 },                // Missing base
+], context);
+// ✅ All rejected
+// ❌ Throws: 'Expected model "FLAT_RATE" to reject params: ...'
+```
+
+### `assertNoSideEffects(input, rules)`
+
+Calls `beforeEvaluate()` **twice** and compares results. If results differ (indicating internal state mutation between calls), the test fails.
+
+```typescript
+await tester.assertNoSideEffects(input, rules);
+// ✅ Two calls → same result
+// ❌ Throws: "Side effects detected: different results between calls"
+```
+
+## `runAll(input, rules, context)`
+
+Runs all assertion tests (determinism, immutability, noSideEffects) and returns a `TestReport`:
+
+```typescript
+interface TestReport {
+  passed: string[];            // e.g. ['determinism', 'immutability']
+  failed: { test: string; error: string }[];
+  summary: 'PASS' | 'FAIL';
+}
+```
+
+**Example output:**
+
+```json
+{
+  "passed": ["determinism", "immutability", "noSideEffects"],
+  "failed": [],
+  "summary": "PASS"
+}
+```
+
+## CI Integration
+
+Use `PluginTester` in your Vitest/Jest test suite:
+
+```typescript
+import { describe, it, expect } from 'vitest';
+import { PluginTester } from '@run-iq/plugin-sdk';
+import { MyPlugin } from './MyPlugin.js';
+
+describe('MyPlugin compliance', () => {
+  const tester = new PluginTester(new MyPlugin());
+  const context = createMockContext();
+  const input = { requestId: 'test', data: { amount: 100 }, meta: { tenantId: 't' } };
+  const rules = [/* test rules */];
+
+  it('passes all compliance tests', async () => {
+    const report = await tester.runAll(input, rules, context);
+    expect(report.summary).toBe('PASS');
+    expect(report.failed).toHaveLength(0);
+  });
+});
+```
+
+<Callout type="warning" title="Not optional">
+  All plugins must pass `PluginTester.runAll()` before publishing.
+  The four contracts (determinism, immutability, params validation, no side effects)
+  are non-negotiable guarantees of the PPE specification.
+</Callout>
+
+---
+
+Next: [Security Model](/docs/advanced/security)
