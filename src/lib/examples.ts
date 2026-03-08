@@ -9,7 +9,7 @@ export interface Example {
 /**
  * Canonical JSON stringification (sorts keys alphabetically)
  */
-function canonicalStringify(obj: any): string | undefined {
+function canonicalStringify(obj: unknown): string | undefined {
   if (obj === undefined) return undefined;
   if (obj === null || typeof obj !== 'object') {
     return JSON.stringify(obj);
@@ -17,9 +17,10 @@ function canonicalStringify(obj: any): string | undefined {
   if (Array.isArray(obj)) {
     return '[' + obj.map((o) => canonicalStringify(o) ?? 'null').join(',') + ']';
   }
-  const keys = Object.keys(obj).sort();
+  const record = obj as Record<string, unknown>;
+  const keys = Object.keys(record).sort();
   return '{' + keys.map((k) => {
-    const val = canonicalStringify(obj[k]);
+    const val = canonicalStringify(record[k]);
     if (val === undefined) return null;
     return `"${k}":${val}`;
   }).filter((v) => v !== null).join(',') + '}';
@@ -28,7 +29,7 @@ function canonicalStringify(obj: any): string | undefined {
 /**
  * Utility to generate checksum for examples
  */
-function computeChecksum(params: any): string {
+function computeChecksum(params: unknown): string {
   return sha256(canonicalStringify(params) ?? 'null');
 }
 
