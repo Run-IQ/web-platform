@@ -1,0 +1,227 @@
+import { Callout } from '@/components/docs/Callout'
+
+# Snapshots & Audit
+
+Snapshots are the audit backbone of Run-IQ. Every evaluation can be captured as an immutable, integrity-verified record — complete enough to reproduce the exact computation months or years later.
+
+## Why Snapshots?
+
+In regulated domains (tax, payroll, compliance), you need to prove:
+
+- **What** was calculated (result + breakdown)
+- **How** it was calculated (rules + params + model versions)
+- **When** it was calculated (timestamp)
+- **With what input** (data + metadata)
+- **That nothing was tampered with** (checksums)
+
+Snapshots capture all of this in a single record.
+
+## ISnapshotAdapter Interface
+
+The engine delegates persistence to a pluggable adapter:
+
+```typescript
+interface ISnapshotAdapter {
+  save(snapshot: Snapshot): Promise<string>;
+  get(snapshotId: string): Promise<Snapshot>;
+  exists(requestId: string): Promise<boolean>;
+}
+```
+
+| Method | Purpose |
+|---|---|
+| `save()` | Persist snapshot, return unique snapshot ID |
+| `get()` | Retrieve a snapshot by ID |
+| `exists()` | Check if a `requestId` has already been evaluated (idempotence) |
+
+The engine doesn't prescribe storage — PostgreSQL, MongoDB, S3, or any other backend works.
+
+## Snapshot Structure
+
+```typescript
+interface Snapshot {
+  id: string;                           // unique snapshot ID
+  requestId: string;                    // original evaluation requestId (idempotence key)
+  engineVersion: string;                // @run-iq/core version
+  pluginVersions: Record<string, string>; // { "@run-iq/plugin-fiscal": "0.1.0" }
+  dslVersions: Record<string, string>;   // { "jsonlogic": "1.0.0" }
+  inputSnapshot: EvaluationInput;       // deep copy of input
+  rulesSnapshot: ReadonlyArray<Rule>;   // deep copy of ALL rules (not IDs!)
+  result: EvaluationResult;            // full evaluation result
+  trace: EvaluationTrace;              // full execution trace
+  checksum: string;                     // SHA-256 of entire serialized snapshot
+  timestamp: Date;                      // evaluation timestamp
+  tenantId: string;                     // tenant identifier
+}
+```
+
+<Callout type="info" title="Complete rules">
+  Snapshots contain the **entire rule objects** — not just IDs. This means a snapshot is self-contained. You can reproduce the exact calculation without access to the original rule database.
+</Callout>
+
+## Idempotency
+
+The `requestId` serves as an idempotence key:
+
+```
+Client sends evaluate(rules, { requestId: 'req-42', ... })
+  ↓
+Engine calls snapshot.exists('req-42')
+  ↓
+Already exists? → return cached result (zero recalculation)
+Not exists?    → run full pipeline → save snapshot
+```
+
+This prevents duplicate computation from network retries, queue redeliveries, or accidental re-submissions. The same `requestId` always produces the same result.
+
+## Integrity Verification
+
+Run-IQ uses SHA-256 checksums at two levels:
+
+### Rule-level checksum
+Each rule carries a `checksum` field — a SHA-256 hash of `JSON.stringify(rule.params)`. The engine recomputes this at evaluation time and compares:
+
+- Match → rule is valid
+- Mismatch → rule was modified after approval (potential tampering)
+
+### Snapshot-level checksum
+After serialization, the entire snapshot JSON is hashed with SHA-256. This `checksum` field allows post-facto verification — any modification to the snapshot (even a single byte) will invalidate the checksum.
+
+## Strict vs Lenient Mode
+
+| Scenario | `strict: true` | `strict: false` |
+|---|---|---|
+| `save()` succeeds | Result returned with `snapshotId` | Same |
+| `save()` fails | `SnapshotFailureError` — result **not** returned | Failure logged, result returned |
+| `dryRun: true` | Persistence skipped entirely | Same |
+
+<Callout type="warning" title="Strict mode">
+  In strict mode, a successful calculation is **withheld** if the snapshot can't be saved. The principle: no evaluation should go unrecorded in production.
+</Callout>
+
+## Reproducibility
+
+Snapshots are designed for exact replay:
+
+- **Complete rules** — not IDs, so no external database dependency
+- **`dslVersions`** — records which DSL evaluator version evaluated each condition (e.g., `{ "jsonlogic": "1.0.0" }`)
+- **`pluginVersions`** — records which plugin version ran the hooks
+- **`engineVersion`** — the exact core version
+- **Monetary values as strings** — JSON serialization preserves precision (no floating-point drift)
+
+Given the same versions of all packages, replaying a snapshot should produce an identical result.
+
+## EvaluationTrace
+
+Every evaluation produces a trace with one step per evaluated rule:
+
+```typescript
+interface EvaluationTrace {
+  steps: TraceStep[];
+  totalDurationMs: number;
+}
+
+interface TraceStep {
+  ruleId: string;
+  conditionResult: boolean;
+  conditionDetail: unknown;
+  modelUsed: string;
+  inputSnapshot: unknown;
+  contribution: unknown;
+  detail?: unknown;
+  durationMs: number;
+  dslUsed?: string;
+}
+```
+
+The trace provides:
+- Per-rule execution timing (`durationMs`)
+- Which DSL evaluator was used (`dslUsed`)
+- Whether the condition passed (`conditionResult`)
+- The calculated contribution and optional model detail
+- Total pipeline duration (`totalDurationMs`)
+
+## SkipReason Reference
+
+When a rule is skipped, the reason is recorded in `skippedRules`:
+
+| SkipReason | Description |
+|---|---|
+| `INACTIVE_DATE` | Rule outside its `effectiveFrom`/`effectiveUntil` window |
+| `CONDITION_FALSE` | DSL condition returned `false` |
+| `CONDITION_TIMEOUT` | DSL evaluation exceeded timeout |
+| `DSL_ERROR` | DSL evaluation threw an error |
+| `DSL_NOT_FOUND` | No evaluator registered for `condition.dsl` |
+| `CHECKSUM_MISMATCH` | Params checksum doesn't match stored checksum |
+| `INVALID_PARAMS` | `model.validateParams()` returned invalid |
+| `TAG_MISMATCH` | Rule tags don't intersect with input tags |
+| `INHIBITED_BY_META_RULE` | Suppressed by a meta-rule during `beforeEvaluate` |
+
+## Building a Custom Adapter
+
+### PostgreSQL (skeleton)
+
+```typescript
+class PostgresSnapshotAdapter implements ISnapshotAdapter {
+  constructor(private db: Pool) {}
+
+  async save(snapshot: Snapshot): Promise<string> {
+    const id = crypto.randomUUID();
+    await this.db.query(
+      'INSERT INTO snapshots (id, request_id, data, checksum) VALUES ($1, $2, $3, $4)',
+      [id, snapshot.requestId, JSON.stringify(snapshot), snapshot.checksum],
+    );
+    return id;
+  }
+
+  async get(snapshotId: string): Promise<Snapshot> {
+    const { rows } = await this.db.query(
+      'SELECT data FROM snapshots WHERE id = $1',
+      [snapshotId],
+    );
+    return JSON.parse(rows[0].data);
+  }
+
+  async exists(requestId: string): Promise<boolean> {
+    const { rows } = await this.db.query(
+      'SELECT 1 FROM snapshots WHERE request_id = $1 LIMIT 1',
+      [requestId],
+    );
+    return rows.length > 0;
+  }
+}
+```
+
+### In-Memory (testing)
+
+```typescript
+class InMemorySnapshotAdapter implements ISnapshotAdapter {
+  private store = new Map<string, Snapshot>();
+  private requestIndex = new Map<string, string>();
+
+  async save(snapshot: Snapshot): Promise<string> {
+    const id = crypto.randomUUID();
+    this.store.set(id, snapshot);
+    this.requestIndex.set(snapshot.requestId, id);
+    return id;
+  }
+
+  async get(snapshotId: string): Promise<Snapshot> {
+    const s = this.store.get(snapshotId);
+    if (!s) throw new Error(`Snapshot ${snapshotId} not found`);
+    return s;
+  }
+
+  async exists(requestId: string): Promise<boolean> {
+    return this.requestIndex.has(requestId);
+  }
+}
+```
+
+Key requirements:
+- `save()` should be atomic — partial writes risk data corruption
+- `exists()` should be fast — it's called on every evaluation
+
+---
+
+Next: [PPEEngine API Reference](/docs/api/engine)

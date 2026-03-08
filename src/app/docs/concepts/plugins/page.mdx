@@ -1,0 +1,154 @@
+import { Callout } from '@/components/docs/Callout'
+
+# Plugin Architecture
+
+Plugins are how domain logic enters Run-IQ. The engine core is domain-agnostic — it knows nothing about tax brackets, payroll deductions, or insurance premiums. All domain-specific calculation models and enrichment logic live in plugins.
+
+## PPEPlugin Interface
+
+Every plugin implements the `PPEPlugin` interface:
+
+```typescript
+interface PPEPlugin {
+  readonly name: string;
+  readonly version: string;
+
+  onInit(context: PluginContext): void;
+  beforeEvaluate?(input: EvaluationInput, rules: ReadonlyArray<Rule>): EvaluationInput;
+  afterEvaluate?(input: EvaluationInput, result: EvaluationResult): EvaluationResult;
+  onError?(error: PPEError, input: EvaluationInput): void;
+  teardown?(): void;
+}
+```
+
+## PluginContext
+
+Plugins receive a `PluginContext` during initialization:
+
+```typescript
+interface PluginContext {
+  readonly modelRegistry: ModelRegistry;  // register CalculationModel instances
+  readonly dslRegistry: DSLRegistry;      // read-only access to DSL evaluators
+  readonly engineVersion: string;         // @run-iq/core version string
+}
+```
+
+The `modelRegistry` is the key — plugins register their calculation models here, making them available for rule evaluation.
+
+## BasePlugin
+
+The `@run-iq/plugin-sdk` provides `BasePlugin`, which handles the common boilerplate:
+
+```typescript
+import { BasePlugin } from '@run-iq/plugin-sdk';
+
+abstract class BasePlugin implements PPEPlugin {
+  abstract readonly name: string;
+  abstract readonly version: string;
+  abstract readonly models: CalculationModel[];
+
+  onInit(context: PluginContext): void {
+    // Auto-registers all models in the array
+    for (const model of this.models) {
+      context.modelRegistry.register(model);
+    }
+  }
+
+  // Default pass-through implementations:
+  beforeEvaluate(input, rules) { return input; }
+  afterEvaluate(input, result) { return result; }
+  onError(error, input) { /* no-op */ }
+  teardown() { /* no-op */ }
+}
+```
+
+Extending `BasePlugin` means you only need to define `name`, `version`, and `models`. Override hooks only when your domain requires enrichment.
+
+## Hook Lifecycle
+
+| Hook | When | Purpose |
+|---|---|---|
+| `onInit()` | Engine construction (once) | Register models, read DSL registry |
+| `beforeEvaluate()` | Before rule filtering | Enrich input, resolve priorities, filter rules |
+| `afterEvaluate()` | After execution | Enrich result with domain-specific metadata |
+| `onError()` | On pipeline error | Observe errors (read-only, no recovery) |
+| `teardown()` | Engine shutdown | Clean up resources |
+
+Hooks are called in **plugin registration order**. If you register `[FiscalPlugin, PayrollPlugin]`, the fiscal plugin's `beforeEvaluate` runs first.
+
+## Immutability Contract
+
+Hooks must return **new** objects — never mutate their arguments.
+
+```typescript
+// Correct — spread operator creates new objects
+beforeEvaluate(input, rules) {
+  return {
+    ...input,
+    data: { ...input.data, enriched: true },
+  };
+}
+
+// WRONG — mutates the input object directly
+beforeEvaluate(input, rules) {
+  input.data.enriched = true;  // mutation!
+  return input;
+}
+```
+
+This contract ensures:
+- Multiple plugins can safely chain hooks
+- The engine can detect mutations in testing (`PluginTester.assertImmutability()`)
+- Snapshots capture accurate pre/post state
+
+## Plugin Isolation Rules
+
+Plugins are isolated by design:
+
+1. **A plugin never imports another plugin** — no cross-plugin dependencies
+2. **A plugin never imports from `@run-iq/core` directly** — use `@run-iq/plugin-sdk` which re-exports core types
+3. **Plugins share no runtime state** — each plugin operates on its own data
+4. **Only the host application imports multiple plugins** — and passes them to the engine
+
+```typescript
+// Host application — the only place multiple plugins appear together
+const engine = new PPEEngine({
+  plugins: [new FiscalPlugin(), new PayrollPlugin()],
+  dsls: [new JsonLogicEvaluator()],
+});
+```
+
+## Timeout Safety
+
+All hooks run inside `PluginSandbox` with a timeout (default **500ms**, configurable via `timeout.hook`):
+
+- If a hook exceeds the timeout, it's interrupted
+- If a hook throws an exception, it's caught
+- In both cases: `onError()` is called, and the pipeline continues with the previous input/result
+
+This prevents a misbehaving plugin from blocking or crashing the entire pipeline.
+
+## Multiple Plugins
+
+The engine supports any number of plugins. Each registers its own models under its own names:
+
+```typescript
+const engine = new PPEEngine({
+  plugins: [
+    new FiscalPlugin(),    // registers FLAT_RATE, PROGRESSIVE_BRACKET, ...
+    new PayrollPlugin(),   // registers SALARY_NET, DEDUCTION, ...
+  ],
+  dsls: [new JsonLogicEvaluator()],
+  dryRun: true,
+});
+```
+
+Rules reference models by name (`rule.model = 'FLAT_RATE'`). The engine resolves the model from the `ModelRegistry` regardless of which plugin registered it.
+
+<Callout type="tip" title="Build your own">
+  See the [Plugin Guide](/docs/plugins/guide) for a step-by-step tutorial on building a custom plugin from scratch.
+</Callout>
+
+---
+
+Next: [Calculation Models](/docs/concepts/models)

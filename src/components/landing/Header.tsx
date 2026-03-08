@@ -34,7 +34,7 @@ export function Header() {
           <a className="nav-link" href="https://github.com/Run-IQ" target="_blank" rel="noopener noreferrer">GitHub</a>
         </nav>
         <div className="hidden md:block">
-          <a href="#docs" className="nav-doc-btn">Documentation</a>
+          <a href="/docs" className="nav-doc-btn">Documentation</a>
         </div>
       </div>
 
@@ -45,7 +45,7 @@ export function Header() {
           <a className="nav-link" href="#plugins" onClick={() => setMenuOpen(false)}>Plugins</a>
           <Link className="nav-link" href="/playground" onClick={() => setMenuOpen(false)}>Playground</Link>
           <a className="nav-link" href="https://github.com/Run-IQ" target="_blank" rel="noopener noreferrer">GitHub</a>
-          <a href="#docs" className="nav-doc-btn self-start mt-2">Documentation</a>
+          <a href="/docs" className="nav-doc-btn self-start mt-2">Documentation</a>
         </nav>
       )}
     </header>

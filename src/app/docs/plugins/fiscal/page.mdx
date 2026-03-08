@@ -1,0 +1,243 @@
+import { Callout } from '@/components/docs/Callout'
+
+# Fiscal Plugin
+
+`@run-iq/plugin-fiscal` provides universal tax calculation models applicable to any tax system worldwide. It ships with 6 calculation models, 3 meta-models, jurisdiction resolution, and fiscal breakdown reporting.
+
+## Installation
+
+```bash
+npm install @run-iq/plugin-fiscal
+```
+
+Peer dependencies: `@run-iq/core`, `@run-iq/plugin-sdk`.
+
+## Overview
+
+| Property | Value |
+|---|---|
+| **Name** | `@run-iq/plugin-fiscal` |
+| **Version** | `0.1.0` |
+| **Models** | 6 calculation + 3 meta |
+| **License** | Source-Available |
+
+## Models
+
+| Model | Formula | Returns |
+|---|---|---|
+| `FLAT_RATE` | `base * rate` | `number` |
+| `PROGRESSIVE_BRACKET` | Cumulative bracket calculation | `CalculationOutput` |
+| `MINIMUM_TAX` | `MAX(base * rate, minimum)` | `CalculationOutput` |
+| `THRESHOLD_BASED` | Tax above/at threshold | `CalculationOutput` |
+| `FIXED_AMOUNT` | Constant amount | `number` |
+| `COMPOSITE` | Combine sub-models (SUM/MAX/MIN) | `CalculationOutput` |
+
+See [Calculation Models](/docs/concepts/models) for detailed documentation of each model.
+
+## beforeEvaluate Hook
+
+The fiscal plugin's `beforeEvaluate` hook performs three operations:
+
+### 1. Jurisdiction Resolution
+
+`JurisdictionResolver` computes rule priority from `jurisdiction` + `scope`:
+
+**Base scores:**
+
+| Jurisdiction | Base Score |
+|---|---|
+| `NATIONAL` | 3000 |
+| `REGIONAL` | 2000 |
+| `MUNICIPAL` | 1000 |
+
+**Scope multipliers:**
+
+| Scope | Multiplier |
+|---|---|
+| `GLOBAL` | 1.0 |
+| `ORGANIZATION` | 1.1 |
+| `USER` | 1.2 |
+
+**Priority = `round(base * multiplier)`**
+
+Full priority table:
+
+| | GLOBAL | ORGANIZATION | USER |
+|---|---|---|---|
+| **NATIONAL** | 3000 | 3300 | 3600 |
+| **REGIONAL** | 2000 | 2200 | 2400 |
+| **MUNICIPAL** | 1000 | 1100 | 1200 |
+
+Higher priority rules are evaluated first. A NATIONAL+USER rule (3600) overrides a NATIONAL+GLOBAL rule (3000).
+
+### 2. Country Filtering
+
+If `input.meta.context.country` is provided, only rules matching that country code are kept:
+
+```typescript
+const country = input.meta.context?.country; // e.g., 'TG'
+const filtered = rules.filter(r => r.country === country);
+```
+
+### 3. Meta-Rule Processing
+
+Meta-models are processed during `beforeEvaluate` to modify the rule set before evaluation. Rules suppressed by meta-rules are skipped with reason `INHIBITED_BY_META_RULE`.
+
+## afterEvaluate Hook
+
+The fiscal plugin enriches the result with a `fiscalBreakdown` — contributions grouped by `category`:
+
+```typescript
+// result.meta.fiscalBreakdown
+{
+  TVA: 900000,
+  IRPP: 625000,
+  IS: 500000,
+}
+```
+
+This makes it easy for the host application to display tax breakdowns by category.
+
+## FiscalRule Extended Fields
+
+`FiscalRule` extends the base `Rule` with fiscal-specific fields:
+
+```typescript
+interface FiscalRule extends Rule {
+  jurisdiction: FiscalJurisdiction;  // 'NATIONAL' | 'REGIONAL' | 'MUNICIPAL'
+  scope: FiscalScope;               // 'GLOBAL' | 'ORGANIZATION' | 'USER'
+  country: string;                  // ISO 3166-1 alpha-2 (e.g., 'TG', 'FR')
+  category: string;                 // Tax category (e.g., 'TVA', 'IRPP', 'IS')
+}
+```
+
+## Meta-Models
+
+Meta-models don't perform calculations — they modify the rule pipeline during `beforeEvaluate`:
+
+### META_INHIBITION
+
+Suppresses rules that match certain criteria. The inhibition rule's condition determines which rules to suppress.
+
+### META_SUBSTITUTION
+
+Replaces the `params` of matching rules. Useful for jurisdiction-specific overrides (e.g., a regional rate overriding the national default).
+
+### META_SHORT_CIRCUIT
+
+Stops the pipeline entirely if the meta-rule's condition is met. Used for scenarios where no calculation should occur (e.g., tax-exempt entities).
+
+<Callout type="info" title="Meta-rule processing">
+  Meta-rules are processed exclusively in the fiscal plugin's `beforeEvaluate` hook — never in the core engine. The core has no knowledge of meta-rule semantics.
+</Callout>
+
+## Real-World Examples (CGI Togo 2025)
+
+### IRPP — Progressive Brackets
+
+```typescript
+{
+  id: 'tg-irpp-2025',
+  model: 'PROGRESSIVE_BRACKET',
+  params: {
+    base: 'income',
+    brackets: [
+      { from: 0,         to: 500_000,   rate: 0 },
+      { from: 500_000,   to: 1_000_000, rate: 0.10 },
+      { from: 1_000_000, to: 3_000_000, rate: 0.15 },
+      { from: 3_000_000, to: 5_000_000, rate: 0.25 },
+      { from: 5_000_000, to: null,      rate: 0.35 },
+    ],
+  },
+  jurisdiction: 'NATIONAL',
+  scope: 'GLOBAL',
+  country: 'TG',
+  category: 'IRPP',
+  effectiveFrom: new Date('2025-01-01'),
+  effectiveUntil: null,
+  tags: ['irpp', 'income-tax'],
+}
+```
+
+### TVA — Flat Rate 18%
+
+```typescript
+{
+  id: 'tg-tva-18',
+  model: 'FLAT_RATE',
+  params: { rate: 0.18, base: 'revenue' },
+  jurisdiction: 'NATIONAL',
+  scope: 'GLOBAL',
+  country: 'TG',
+  category: 'TVA',
+  effectiveFrom: new Date('2025-01-01'),
+  effectiveUntil: null,
+  tags: ['tva', 'vat'],
+}
+```
+
+### IS — Minimum Tax
+
+```typescript
+{
+  id: 'tg-imf-2025',
+  model: 'MINIMUM_TAX',
+  params: { rate: 0.01, base: 'revenue', minimum: 500_000 },
+  jurisdiction: 'NATIONAL',
+  scope: 'GLOBAL',
+  country: 'TG',
+  category: 'IMF',
+  effectiveFrom: new Date('2025-01-01'),
+  effectiveUntil: null,
+  tags: ['imf', 'minimum-tax'],
+}
+```
+
+### CNSS — Composite
+
+```typescript
+{
+  id: 'tg-cnss-2025',
+  model: 'COMPOSITE',
+  params: {
+    aggregation: 'SUM',
+    steps: [
+      { model: 'FLAT_RATE', params: { rate: 0.04, base: 'grossSalary' }, label: 'Employee' },
+      { model: 'FLAT_RATE', params: { rate: 0.165, base: 'grossSalary' }, label: 'Employer' },
+      { model: 'FLAT_RATE', params: { rate: 0.025, base: 'grossSalary' }, label: 'Injury' },
+    ],
+  },
+  jurisdiction: 'NATIONAL',
+  scope: 'GLOBAL',
+  country: 'TG',
+  category: 'CNSS',
+  effectiveFrom: new Date('2025-01-01'),
+  effectiveUntil: null,
+  tags: ['cnss', 'social'],
+}
+```
+
+## PluginDescriptor
+
+The fiscal plugin exports a `fiscalDescriptor` providing metadata for tooling:
+
+```typescript
+import { fiscalDescriptor } from '@run-iq/plugin-fiscal';
+
+fiscalDescriptor.name;            // '@run-iq/plugin-fiscal'
+fiscalDescriptor.domainLabel;     // 'fiscal'
+fiscalDescriptor.ruleExtensions;  // jurisdiction, scope, country, category
+fiscalDescriptor.inputFields;     // revenue, income, expenses, netProfit
+fiscalDescriptor.examples;        // VAT, IRPP, minimum tax examples
+fiscalDescriptor.promptGuidelines; // model selection guidance
+```
+
+The descriptor powers:
+- MCP server tool schemas
+- CLI rule validation
+- Playground input forms
+- LLM prompt context for rule generation
+
+---
+
+Next: [JSONLogic Evaluator](/docs/dsl/jsonlogic)

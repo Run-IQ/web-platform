@@ -1,0 +1,125 @@
+import { Callout } from '@/components/docs/Callout'
+
+# Engine
+
+The `PPEEngine` is the main entry point for Run-IQ. It orchestrates the entire evaluation pipeline — from rule filtering to result aggregation.
+
+## Creating an Engine
+
+```typescript
+import { PPEEngine } from '@run-iq/core';
+import { JsonLogicEvaluator } from '@run-iq/dsl-jsonlogic';
+import { FiscalPlugin } from '@run-iq/plugin-fiscal';
+
+const engine = new PPEEngine({
+  plugins: [new FiscalPlugin()],
+  dsls: [new JsonLogicEvaluator()],
+  dryRun: true,
+});
+```
+
+## What Happens at Construction
+
+When you instantiate `PPEEngine`, it:
+
+1. Registers each DSL evaluator in the `DSLRegistry` (keyed by `dsl` field)
+2. Registers each plugin in the `PluginRegistry`
+3. Calls `plugin.onInit(context)` for each plugin — this is where plugins register their calculation models in the `ModelRegistry`
+
+After construction, the engine is ready to evaluate. It's **stateless between evaluations** — no mutable state carries over.
+
+## The `evaluate()` Method
+
+```typescript
+const result = await engine.evaluate(rules, input);
+```
+
+### Parameters
+
+| Parameter | Type | Description |
+|---|---|---|
+| `rules` | `ReadonlyArray<Rule>` | The rules to evaluate |
+| `input` | `EvaluationInput` | Data + requestId + metadata |
+
+### Return Value: `EvaluationResult`
+
+```typescript
+interface EvaluationResult {
+  requestId: string;
+  value: unknown;
+  breakdown: readonly BreakdownItem[];
+  appliedRules: readonly Rule[];
+  skippedRules: readonly SkippedRule[];
+  trace: EvaluationTrace;
+  snapshotId: string;
+  engineVersion: string;
+  pluginVersions: Record<string, string>;
+  dslVersions: Record<string, string>;
+  timestamp: Date;
+  meta?: Record<string, unknown>;
+}
+```
+
+## Evaluation Input
+
+```typescript
+interface EvaluationInput {
+  data: Record<string, unknown>;
+  requestId: string;
+  meta: {
+    tenantId: string;
+    userId?: string;
+    tags?: readonly string[];
+    context?: Record<string, unknown>;
+    effectiveDate?: Date;
+  };
+}
+```
+
+The `data` object is what calculation models read from — `{ revenue: 5000000 }`, `{ grossSalary: 1200000 }`, etc.
+
+The `meta` object provides context for plugin hooks and filtering. `meta.tags` filters rules by tag, `meta.context` carries domain context (country codes, currency, etc.), and `meta.effectiveDate` overrides the current date for temporal filtering.
+
+## Engine Guarantees
+
+### Stateless
+
+Every `evaluate()` call is independent. The engine holds no mutable state between evaluations. You can call `evaluate()` concurrently from multiple contexts safely.
+
+### Deterministic
+
+Given the same rules, input, and date — the engine always produces the same result. No randomness, no external I/O during calculation, no time-dependent behavior in models.
+
+### Fault-tolerant
+
+By default, individual rule failures don't crash the pipeline. A model error, DSL timeout, or checksum mismatch results in the rule being recorded in `skippedRules` with a `SkipReason` — the remaining rules continue evaluating.
+
+<Callout type="warning" title="Strict mode exception">
+  In `strict: true` mode, snapshot failures **do** halt the pipeline. The result
+  is not returned if the snapshot can't be saved.
+</Callout>
+
+### Idempotent
+
+If a `requestId` has already been evaluated (and a snapshot exists), the engine returns the existing result without re-computing. This is automatic when using a snapshot adapter.
+
+## Multiple Plugins
+
+You can load multiple plugins simultaneously. Each plugin registers its own models under its own domain:
+
+```typescript
+const engine = new PPEEngine({
+  plugins: [
+    new FiscalPlugin(),    // registers FLAT_RATE, PROGRESSIVE_BRACKET, ...
+    new PayrollPlugin(),   // registers SALARY_NET, DEDUCTION, ...
+  ],
+  dsls: [new JsonLogicEvaluator()],
+  dryRun: true,
+});
+```
+
+Rules are matched to models via the `model` field — the engine looks up the model in the registry regardless of which plugin registered it. Plugins are isolated — they never import from or interact with each other.
+
+---
+
+Next: [Pipeline](/docs/concepts/pipeline)

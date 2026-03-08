@@ -1,0 +1,169 @@
+import { Callout } from '@/components/docs/Callout'
+
+# PPEEngine API Reference
+
+The `PPEEngine` class is the main entry point for Run-IQ. It orchestrates the entire evaluation pipeline.
+
+## Constructor
+
+```typescript
+import { PPEEngine } from '@run-iq/core';
+
+const engine = new PPEEngine(config: PPEEngineConfig);
+```
+
+## PPEEngineConfig
+
+```typescript
+interface PPEEngineConfig {
+  plugins: PPEPlugin[];
+  dsls: DSLEvaluator[];
+  snapshot?: ISnapshotAdapter;
+  strict?: boolean;
+  dryRun?: boolean;
+  timeout?: {
+    dsl?: number;
+    hook?: number;
+    pipeline?: number;
+  };
+  onConflict?: 'throw' | 'first';
+  onChecksumMismatch?: 'throw' | 'skip';
+}
+```
+
+### Required Options
+
+| Option | Type | Description |
+|---|---|---|
+| `plugins` | `PPEPlugin[]` | Domain plugins that register calculation models |
+| `dsls` | `DSLEvaluator[]` | Condition evaluators (JSONLogic, CEL, etc.) |
+
+### Optional Options
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `snapshot` | `ISnapshotAdapter` | `undefined` | Persistence adapter for evaluation snapshots |
+| `strict` | `boolean` | `true` | If `true`, snapshot save failure throws `SnapshotFailureError` |
+| `dryRun` | `boolean` | `false` | If `true`, skip snapshot persistence entirely |
+| `timeout.dsl` | `number` | `100` | Max ms for a single DSL condition evaluation |
+| `timeout.hook` | `number` | `500` | Max ms for a plugin hook |
+| `timeout.pipeline` | `number` | `5000` | Max ms for the entire evaluation pipeline |
+| `onConflict` | `'throw' \| 'first'` | `'throw'` when strict, `'first'` otherwise | Behavior when rules share the same priority |
+| `onChecksumMismatch` | `'throw' \| 'skip'` | `undefined` | Behavior when a rule's checksum doesn't match |
+
+## `evaluate()`
+
+```typescript
+async evaluate(
+  rules: ReadonlyArray<Rule>,
+  input: EvaluationInput,
+): Promise<EvaluationResult>
+```
+
+### Parameters
+
+| Parameter | Type | Description |
+|---|---|---|
+| `rules` | `ReadonlyArray<Rule>` | The rules to evaluate |
+| `input` | `EvaluationInput` | Data + requestId + metadata |
+
+### EvaluationInput
+
+```typescript
+interface EvaluationInput {
+  data: Record<string, unknown>;
+  requestId: string;
+  meta: {
+    tenantId: string;
+    userId?: string;
+    tags?: readonly string[];
+    context?: Record<string, unknown>;
+    effectiveDate?: Date;
+  };
+}
+```
+
+| Field | Required | Description |
+|---|---|---|
+| `data` | Yes | Values that rules operate on (revenue, income, etc.) |
+| `requestId` | Yes | Unique ID for idempotency |
+| `meta.tenantId` | Yes | Tenant identifier |
+| `meta.userId` | No | User identifier |
+| `meta.tags` | No | Tag filter — only rules with matching tags are evaluated |
+| `meta.context` | No | Additional context (e.g., `{ country: 'TG' }`) |
+| `meta.effectiveDate` | No | Override current date for temporal filtering |
+
+## EvaluationResult
+
+```typescript
+interface EvaluationResult {
+  requestId: string;
+  value: unknown;
+  breakdown: readonly BreakdownItem[];
+  appliedRules: readonly Rule[];
+  skippedRules: readonly SkippedRule[];
+  trace: EvaluationTrace;
+  snapshotId: string;
+  engineVersion: string;
+  pluginVersions: Record<string, string>;
+  dslVersions: Record<string, string>;
+  timestamp: Date;
+  meta?: Record<string, unknown>;
+}
+```
+
+| Field | Description |
+|---|---|
+| `requestId` | Echo of the input requestId |
+| `value` | Aggregated result (typically a number — sum of all contributions) |
+| `breakdown` | Per-rule contribution details |
+| `appliedRules` | Rules that matched and were calculated |
+| `skippedRules` | Rules that were filtered or failed validation |
+| `trace` | Step-by-step execution log |
+| `snapshotId` | Snapshot ID (empty string if no snapshot) |
+| `engineVersion` | `@run-iq/core` version |
+| `pluginVersions` | Map of plugin name to version |
+| `dslVersions` | Map of DSL name to version |
+| `timestamp` | When the evaluation occurred |
+| `meta` | Plugin-injected metadata (e.g., `fiscalBreakdown`) |
+
+## BreakdownItem
+
+```typescript
+interface BreakdownItem {
+  ruleId: string;
+  contribution: unknown;
+  modelUsed: string;
+  label?: string;
+  detail?: unknown;
+}
+```
+
+## SkippedRule
+
+```typescript
+interface SkippedRule {
+  rule: Rule;
+  reason: SkipReason;
+}
+```
+
+## Error Conditions
+
+| Error | Trigger | Engine Behavior |
+|---|---|---|
+| `RuleConflictError` | Same priority, `onConflict: 'throw'` | Pipeline halts |
+| `ModelNotFoundError` | `rule.model` not in ModelRegistry | Pipeline halts |
+| `SnapshotFailureError` | `save()` fails, `strict: true` | Pipeline halts, result withheld |
+| `DSLTimeoutError` | Condition eval exceeds `timeout.dsl` | Rule skipped (`CONDITION_TIMEOUT`) |
+| `DSLEvaluationError` | Condition eval throws | Rule skipped (`DSL_ERROR`) |
+| `DSLNotFoundError` | `condition.dsl` not registered | Rule skipped (`DSL_NOT_FOUND`) |
+| `ValidationError` | Invalid rule params | Rule skipped (`INVALID_PARAMS`) |
+
+<Callout type="info" title="Fault tolerance">
+  DSL and validation errors skip individual rules — the pipeline continues. Only conflict, model, and snapshot errors halt the pipeline.
+</Callout>
+
+---
+
+Next: [Types](/docs/api/types)

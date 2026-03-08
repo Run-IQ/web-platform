@@ -1,0 +1,233 @@
+import { Callout } from '@/components/docs/Callout'
+
+# The 10-Step Pipeline
+
+Every call to `engine.evaluate()` runs through a deterministic 10-step pipeline. Each step has a single responsibility, and the pipeline continues even if individual rules fail — unless strict mode intervenes.
+
+## Overview
+
+```
+1. Input Validation       → reject malformed input
+2. Idempotence Check      → return cached result if requestId exists
+3. beforeEvaluate Hooks   → plugin enrichment (immutable chain)
+4. Rule Filtering         → dates, conditions, tags, meta-rules
+5. Rule Validation        → checksum + params verification
+6. Dominance Resolution   → priority sorting + conflict detection
+7. Execution              → model.calculate() for each matched rule
+8. afterEvaluate Hooks    → plugin enrichment of results
+9. Snapshot Serialization  → deep copy + integrity checksum
+10. Snapshot Persistence   → save to adapter (strict/lenient)
+```
+
+## Step 1: Input Validation
+
+`InputSanitizer.validate(input)` verifies the structure of the `EvaluationInput`:
+
+- `data` must be a non-null object
+- `requestId` must be a non-empty string
+- `meta.tenantId` must be a non-empty string
+
+If any check fails, the engine throws immediately — no computation is attempted on malformed input.
+
+## Step 2: Idempotence Check
+
+```typescript
+const exists = await snapshotManager.exists(input.requestId);
+if (exists) {
+  return cachedResult; // zero recalculation
+}
+```
+
+The `requestId` is the idempotence key. If a snapshot adapter is configured and `exists(requestId)` returns `true`, the engine returns the cached result without re-running the pipeline.
+
+This prevents duplicate computation when the same evaluation is requested multiple times (e.g., network retries, queue redeliveries).
+
+<Callout type="info" title="Dry run">
+  In `dryRun: true` mode, no snapshot adapter is used, so idempotence checking is effectively skipped.
+</Callout>
+
+## Step 3: beforeEvaluate Hooks
+
+Plugin hooks are called in registration order. Each receives the current input and the full rule set, and returns a **new** `EvaluationInput`:
+
+```typescript
+for (const plugin of plugins) {
+  if (plugin.beforeEvaluate) {
+    currentInput = plugin.beforeEvaluate(currentInput, rules);
+  }
+}
+```
+
+This is an **immutable chain** — the output of one hook becomes the input of the next. Hooks must never mutate their arguments; they return new objects via spread.
+
+**FiscalPlugin** uses `beforeEvaluate` to:
+- Resolve rule priorities from `jurisdiction` + `scope` via `JurisdictionResolver`
+- Filter rules by `country` (matching `input.meta.context.country`)
+
+Hook timeout: **500ms** (configurable via `timeout.hook`). If a hook throws or times out, `onError` is called and the pipeline continues with the previous input.
+
+## Step 4: Rule Filtering
+
+Rules are filtered in three passes:
+
+### Date filtering
+Each rule's `effectiveFrom` and `effectiveUntil` are compared against the effective date (`input.meta.effectiveDate` or current date). Rules outside their active period are skipped with reason `INACTIVE_DATE`.
+
+### Condition evaluation
+For rules with a `condition`, the engine looks up the DSL evaluator in the `DSLRegistry` by `condition.dsl` and calls `evaluator.evaluate(condition.value, input.data)`:
+
+| Outcome | SkipReason |
+|---|---|
+| Condition returns `false` | `CONDITION_FALSE` |
+| DSL evaluator not found | `DSL_NOT_FOUND` |
+| Evaluation throws | `DSL_ERROR` |
+| Evaluation exceeds timeout | `CONDITION_TIMEOUT` |
+
+DSL timeout: **100ms** default (configurable via `timeout.dsl`).
+
+### Tag filtering
+If `input.meta.tags` is provided, only rules whose `tags` array intersects with the input tags are kept. Non-matching rules are skipped with reason `TAG_MISMATCH`.
+
+### Meta-rule filtering
+In plugins like FiscalPlugin, meta-rules (`META_INHIBITION`, `META_SUBSTITUTION`, `META_SHORT_CIRCUIT`) can suppress other rules during `beforeEvaluate`. Suppressed rules are skipped with reason `INHIBITED_BY_META_RULE`.
+
+## Step 5: Rule Validation
+
+Two checks run on every rule that passed filtering:
+
+### Checksum verification
+The engine computes `SHA-256(JSON.stringify(rule.params))` and compares it to `rule.checksum`:
+
+- **Match** — rule proceeds
+- **Mismatch + `onChecksumMismatch: 'throw'`** — throws error
+- **Mismatch + `onChecksumMismatch: 'skip'`** — rule skipped with reason `CHECKSUM_MISMATCH`
+
+### Params validation
+The engine calls `model.validateParams(rule.params)`. If validation fails, the rule is skipped with reason `INVALID_PARAMS`.
+
+If the model specified by `rule.model` is not found in the `ModelRegistry`, a `ModelNotFoundError` is thrown.
+
+## Step 6: Dominance Resolution
+
+Rules are sorted by `priority` in descending order (highest priority first).
+
+### Conflict detection
+When two or more rules share the same priority:
+
+- `onConflict: 'throw'` — throws `RuleConflictError` with the conflicting rule IDs
+- `onConflict: 'first'` — picks the first rule encountered, discards the rest
+
+<Callout type="warning" title="Default behavior">
+  When `strict: true`, `onConflict` defaults to `'throw'`. When `strict: false`, it defaults to `'first'`.
+</Callout>
+
+## Step 7: Execution
+
+For each matched rule (in priority order), the engine calls:
+
+```typescript
+const result = model.calculate(input.data, rule, rule.params);
+```
+
+The model returns either a `number` or a `CalculationOutput` (`{ value, detail? }`). Each result becomes a `BreakdownItem`:
+
+```typescript
+interface BreakdownItem {
+  ruleId: string;
+  contribution: unknown;
+  modelUsed: string;
+  label?: string;
+  detail?: unknown;
+}
+```
+
+If a model throws during calculation, the error is caught and the pipeline continues with the remaining rules — individual rule failures don't crash the pipeline.
+
+## Step 8: afterEvaluate Hooks
+
+Similar to `beforeEvaluate`, hooks are called in registration order. Each receives the input and the current result, and returns a **new** `EvaluationResult`:
+
+```typescript
+for (const plugin of plugins) {
+  if (plugin.afterEvaluate) {
+    result = plugin.afterEvaluate(currentInput, result);
+  }
+}
+```
+
+**FiscalPlugin** uses `afterEvaluate` to add a `fiscalBreakdown` to `result.meta` — grouping contributions by `category` (IRPP, TVA, IS, etc.).
+
+Hook timeout: **500ms**. Failure is handled the same way as `beforeEvaluate` — `onError` called, pipeline continues.
+
+## Step 9: Snapshot Serialization
+
+The engine builds a complete `Snapshot` object:
+
+- Deep copy of `input`, `rules`, `result`, and `trace`
+- Compute SHA-256 checksum of the entire serialized snapshot
+- Record `engineVersion`, `pluginVersions`, and `dslVersions` for reproducibility
+
+```typescript
+const snapshot = SnapshotSerializer.serialize(
+  currentInput, rules, result, trace,
+  engineVersion, pluginVersions, dslVersions,
+);
+```
+
+Monetary values are stored as strings in the serialized JSON to prevent floating-point precision loss.
+
+## Step 10: Snapshot Persistence
+
+```typescript
+const snapshotId = await snapshotManager.save(snapshot);
+```
+
+The snapshot adapter's `save()` method persists the snapshot and returns a unique snapshot ID.
+
+| Mode | Behavior on save failure |
+|---|---|
+| `strict: true` | Throws `SnapshotFailureError` — result is **not** returned |
+| `strict: false` | Failure is logged — result is returned anyway |
+| `dryRun: true` | Persistence is skipped entirely |
+
+<Callout type="warning" title="Strict mode">
+  In strict mode, even though the calculation succeeded, the result is withheld if the snapshot can't be saved. This ensures no evaluation goes unrecorded in production.
+</Callout>
+
+## TraceStep Structure
+
+Every evaluated rule produces a `TraceStep`:
+
+```typescript
+interface TraceStep {
+  ruleId: string;           // which rule
+  conditionResult: boolean; // did the condition pass?
+  conditionDetail: unknown; // raw condition evaluation output
+  modelUsed: string;        // calculation model name
+  inputSnapshot: unknown;   // input data at time of evaluation
+  contribution: unknown;    // calculated value
+  detail?: unknown;         // model-specific detail (brackets, etc.)
+  durationMs: number;       // execution time in milliseconds
+  dslUsed?: string;         // which DSL evaluator was used
+}
+```
+
+The full trace also records `totalDurationMs` — end-to-end pipeline time.
+
+## SkipReason Reference
+
+| Value | When |
+|---|---|
+| `INACTIVE_DATE` | Rule's `effectiveFrom`/`effectiveUntil` excludes the evaluation date |
+| `CONDITION_FALSE` | DSL condition evaluated to `false` |
+| `CONDITION_TIMEOUT` | DSL condition evaluation exceeded timeout |
+| `DSL_ERROR` | DSL condition evaluation threw an error |
+| `DSL_NOT_FOUND` | No evaluator registered for `condition.dsl` |
+| `CHECKSUM_MISMATCH` | SHA-256 of params doesn't match `rule.checksum` |
+| `INVALID_PARAMS` | `model.validateParams()` returned `valid: false` |
+| `TAG_MISMATCH` | Rule tags don't intersect with `input.meta.tags` |
+| `INHIBITED_BY_META_RULE` | Suppressed by a meta-rule in `beforeEvaluate` |
+
+---
+
+Next: [Plugins](/docs/concepts/plugins)

@@ -1,0 +1,47 @@
+import { Callout } from '@/components/docs/Callout'
+
+# Introduction
+
+Run-IQ is a **parametric rule engine** for regulated domains — tax, payroll, compliance, insurance. It evaluates declarative rules against structured input and produces deterministic, auditable results.
+
+## Why Run-IQ?
+
+Regulated domains demand guarantees that generic rule engines don't provide:
+
+- **Determinism** — same rules + same input = same output, always
+- **Immutability** — rules and input are never mutated during evaluation
+- **Auditability** — every evaluation produces a trace and can be persisted as an integrity-verified snapshot
+- **Decimal precision** — all monetary calculations use `decimal.js`, never floating-point
+- **Reproducibility** — snapshots capture the full evaluation context (rules, DSL versions, params) for exact replay
+
+## Architecture at a Glance
+
+```
+Host Application
+  └── PPEEngine
+        ├── Plugins        (domain logic: fiscal, payroll, ...)
+        ├── DSL Evaluators (JSONLogic, CEL, ...)
+        ├── Pipeline       (10-step evaluation)
+        └── Snapshot       (persistence + integrity)
+```
+
+The **engine core** is domain-agnostic. It knows nothing about tax brackets or payroll calculations. All domain logic lives in **plugins** that register calculation models. Rule conditions are evaluated by pluggable **DSL evaluators**.
+
+## Packages
+
+| Package | Description | License |
+|---|---|---|
+| `@run-iq/core` | Engine, pipeline, registries, snapshot | MIT |
+| `@run-iq/dsl-jsonlogic` | JSONLogic condition evaluator | MIT |
+| `@run-iq/plugin-sdk` | BasePlugin, BaseModel, testing utilities | MIT |
+| `@run-iq/plugin-fiscal` | Tax calculation models (6 models) | Source-Available |
+
+<Callout type="tip" title="Try it live">
+  Head to the [Playground](/playground) to evaluate rules in your browser — no installation needed.
+</Callout>
+
+## Next Steps
+
+- [Installation](/docs/getting-started/installation) — add Run-IQ to your project
+- [Quick Start](/docs/getting-started/quick-start) — evaluate your first rule in 5 minutes
+- [Core Concepts](/docs/concepts/rules) — understand rules, engine, and pipeline

@@ -1,0 +1,71 @@
+import { Callout } from '@/components/docs/Callout'
+
+# Installation
+
+Run-IQ is distributed as npm packages under the `@run-iq` scope.
+
+## Core Engine
+
+The engine is the only required package. Install it along with at least one DSL evaluator:
+
+```bash
+npm install @run-iq/core @run-iq/dsl-jsonlogic
+```
+
+## Adding a Domain Plugin
+
+Plugins provide the calculation models for your domain. For fiscal/tax rules:
+
+```bash
+npm install @run-iq/plugin-sdk @run-iq/plugin-fiscal
+```
+
+<Callout type="info" title="Peer dependencies">
+  `@run-iq/plugin-fiscal` has peer dependencies on `@run-iq/core` and `@run-iq/plugin-sdk`.
+  npm 7+ installs peer dependencies automatically.
+</Callout>
+
+## Full Install (Fiscal)
+
+For a complete fiscal setup:
+
+```bash
+npm install @run-iq/core @run-iq/dsl-jsonlogic @run-iq/plugin-sdk @run-iq/plugin-fiscal
+```
+
+## Requirements
+
+- **Node.js 20+** (LTS recommended)
+- **TypeScript 5.5+** (optional but recommended — all packages ship with type declarations)
+
+## Package Overview
+
+```
+@run-iq/core             → PPEEngine, types, pipeline, snapshot
+@run-iq/dsl-jsonlogic    → JSONLogic condition evaluator
+@run-iq/plugin-sdk       → BasePlugin, BaseModel, PluginTester
+@run-iq/plugin-fiscal    → FlatRate, ProgressiveBracket, MinimumTax,
+                           Threshold, FixedAmount, Composite
+```
+
+## Verify Installation
+
+```typescript
+import { PPEEngine } from '@run-iq/core';
+import { JsonLogicEvaluator } from '@run-iq/dsl-jsonlogic';
+import { FiscalPlugin } from '@run-iq/plugin-fiscal';
+
+const engine = new PPEEngine({
+  plugins: [new FiscalPlugin()],
+  dsls: [new JsonLogicEvaluator()],
+  dryRun: true,
+});
+
+console.log('Run-IQ ready');
+```
+
+If this runs without errors, you're all set.
+
+---
+
+Next: [Quick Start](/docs/getting-started/quick-start)

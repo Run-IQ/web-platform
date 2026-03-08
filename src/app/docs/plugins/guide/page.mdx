@@ -1,0 +1,305 @@
+import { Callout } from '@/components/docs/Callout'
+
+# Building a Plugin
+
+This guide walks you through creating a Run-IQ plugin from scratch. You'll build a simple plugin with a custom calculation model, test it with `PluginTester`, and package it as a `PluginBundle`.
+
+## Step 1: Project Setup
+
+Create a new package with peer dependencies on `@run-iq/core` and `@run-iq/plugin-sdk`:
+
+```json
+{
+  "name": "@my-org/plugin-example",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "peerDependencies": {
+    "@run-iq/core": "^0.1.0",
+    "@run-iq/plugin-sdk": "^0.2.0"
+  },
+  "dependencies": {
+    "decimal.js": "^10.4.0"
+  }
+}
+```
+
+TypeScript configuration should match the Run-IQ standard:
+
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "declaration": true,
+    "outDir": "dist"
+  }
+}
+```
+
+## Step 2: Define a Model
+
+Every model extends `BaseModel` and implements two methods:
+- `validateParams()` — validate rule parameters at evaluation time
+- `calculate()` — perform the computation
+
+```typescript
+import Decimal from 'decimal.js';
+import { BaseModel, SchemaValidator } from '@run-iq/plugin-sdk';
+import type { ValidationResult, CalculationOutput, Rule } from '@run-iq/plugin-sdk';
+
+interface PercentageParams {
+  rate: number;
+  base: string;
+  cap?: number;
+}
+
+export class PercentageWithCapModel extends BaseModel {
+  readonly name = 'PERCENTAGE_WITH_CAP' as const;
+  readonly version = '1.0.0';
+
+  validateParams(params: unknown): ValidationResult {
+    return SchemaValidator.validate(params, {
+      rate: { type: 'number', min: 0, max: 1 },
+      base: { type: 'string' },
+      cap: { type: 'number', min: 0, required: false },
+    });
+  }
+
+  calculate(
+    input: Record<string, unknown>,
+    _matchedRule: Readonly<Rule>,
+    params: unknown,
+  ): CalculationOutput {
+    const p = params as PercentageParams;
+    const baseValue = new Decimal(String(input[p.base] ?? 0));
+    const computed = baseValue.mul(p.rate);
+
+    const cap = p.cap !== undefined ? new Decimal(String(p.cap)) : null;
+    const capped = cap !== null && computed.gt(cap);
+    const value = capped ? cap.toNumber() : computed.toNumber();
+
+    return {
+      value,
+      detail: {
+        base: baseValue.toNumber(),
+        rate: p.rate,
+        computed: computed.toNumber(),
+        cap: p.cap ?? null,
+        capped,
+      },
+    };
+  }
+}
+```
+
+<Callout type="warning" title="Decimal.js">
+  Always use `decimal.js` for monetary arithmetic. Never use native `number` operations like `*`, `+`, `-` on amounts.
+</Callout>
+
+## Step 3: Create the Plugin
+
+Extend `BasePlugin` and declare your models:
+
+```typescript
+import { BasePlugin } from '@run-iq/plugin-sdk';
+import type { CalculationModel } from '@run-iq/plugin-sdk';
+import { PercentageWithCapModel } from './models/PercentageWithCapModel.js';
+
+export class ExamplePlugin extends BasePlugin {
+  readonly name = '@my-org/plugin-example' as const;
+  readonly version = '1.0.0';
+
+  readonly models: CalculationModel[] = [
+    new PercentageWithCapModel(),
+  ];
+}
+```
+
+That's it for a basic plugin. `BasePlugin.onInit()` automatically registers all models in the `ModelRegistry`.
+
+### Optional: Custom Hooks
+
+Override `beforeEvaluate` or `afterEvaluate` if your domain requires enrichment:
+
+```typescript
+import type { EvaluationInput, EvaluationResult, Rule } from '@run-iq/plugin-sdk';
+
+export class ExamplePlugin extends BasePlugin {
+  // ...
+
+  override beforeEvaluate(
+    input: EvaluationInput,
+    _rules: ReadonlyArray<Rule>,
+  ): EvaluationInput {
+    // IMMUTABLE — always return new objects
+    return {
+      ...input,
+      data: {
+        ...input.data,
+        processedAt: new Date().toISOString(),
+      },
+    };
+  }
+
+  override afterEvaluate(
+    _input: EvaluationInput,
+    result: EvaluationResult,
+  ): EvaluationResult {
+    return {
+      ...result,
+      meta: { ...result.meta, pluginProcessed: true },
+    };
+  }
+}
+```
+
+## Step 4: Test with PluginTester
+
+`PluginTester` from `@run-iq/plugin-sdk` provides automated compliance tests:
+
+```typescript
+import { PluginTester } from '@run-iq/plugin-sdk';
+import { ExamplePlugin } from './ExamplePlugin.js';
+
+const plugin = new ExamplePlugin();
+const tester = new PluginTester(plugin);
+
+// Create a mock PluginContext
+const context = {
+  modelRegistry: new ModelRegistry(),
+  dslRegistry: new DSLRegistry(),
+  engineVersion: '0.1.0',
+};
+
+const input = {
+  data: { salary: 1_000_000 },
+  requestId: 'test-1',
+  meta: { tenantId: 'tenant-1' },
+};
+
+const rules = [{
+  id: 'test-rule',
+  version: 1,
+  model: 'PERCENTAGE_WITH_CAP',
+  params: { rate: 0.05, base: 'salary', cap: 40000 },
+  priority: 1,
+  effectiveFrom: new Date('2025-01-01'),
+  effectiveUntil: null,
+  tags: [],
+  checksum: '...',
+}];
+```
+
+### Available Tests
+
+| Method | What it checks |
+|---|---|
+| `assertDeterminism(input, rules, context)` | Same input x3 = same result |
+| `assertImmutability(input, rules)` | Input/rules not mutated by hooks |
+| `assertParamsValidation(modelName, invalidParams, context)` | Invalid params are rejected |
+| `assertNoSideEffects(input, rules)` | No global state mutation between calls |
+| `runAll(input, rules, context)` | Runs all tests, returns `TestReport` |
+
+### Running All Tests
+
+```typescript
+const report = await tester.runAll(input, rules, context);
+
+console.log(report.summary); // 'PASS' or 'FAIL'
+console.log(report.passed);  // ['determinism', 'immutability', 'noSideEffects']
+console.log(report.failed);  // [] (empty if all passed)
+```
+
+## Step 5: Create PluginDescriptor
+
+A `PluginDescriptor` provides self-describing metadata for tooling (MCP server, CLI, Playground):
+
+```typescript
+import type { PluginDescriptor } from '@run-iq/plugin-sdk';
+
+export const exampleDescriptor: PluginDescriptor = {
+  name: '@my-org/plugin-example',
+  version: '1.0.0',
+  description: 'Example domain plugin with percentage-with-cap model.',
+  domainLabel: 'example',
+
+  ruleExtensions: [],
+
+  inputFields: [
+    {
+      name: 'salary',
+      type: 'number',
+      description: 'Employee gross salary.',
+      examples: [500_000, 1_000_000],
+    },
+  ],
+
+  examples: [
+    {
+      title: 'Capped Percentage',
+      description: '5% of salary with a 40,000 cap.',
+      rule: {
+        id: 'cap-example',
+        model: 'PERCENTAGE_WITH_CAP',
+        params: { rate: 0.05, base: 'salary', cap: 40_000 },
+      },
+      input: { salary: 1_000_000 },
+    },
+  ],
+
+  promptGuidelines: [
+    'Use PERCENTAGE_WITH_CAP when a tax or contribution has an upper limit.',
+  ],
+};
+```
+
+## Step 6: Export as PluginBundle
+
+Package everything into a `PluginBundle` for easy consumption:
+
+```typescript
+import type { PluginBundle } from '@run-iq/plugin-sdk';
+import { ExamplePlugin } from './ExamplePlugin.js';
+import { exampleDescriptor } from './descriptor.js';
+
+export const exampleBundle: PluginBundle = {
+  plugin: new ExamplePlugin(),
+  descriptor: exampleDescriptor,
+};
+```
+
+Consumers can then use the bundle:
+
+```typescript
+import { PPEEngine } from '@run-iq/core';
+import { JsonLogicEvaluator } from '@run-iq/dsl-jsonlogic';
+import { exampleBundle } from '@my-org/plugin-example';
+
+const engine = new PPEEngine({
+  plugins: [exampleBundle.plugin],
+  dsls: [new JsonLogicEvaluator()],
+  dryRun: true,
+});
+```
+
+## Best Practices
+
+- **Immutability** — hooks must return new objects, never mutate arguments
+- **Decimal.js** — all monetary operations must use `decimal.js`
+- **No side effects in `calculate()`** — no I/O, no `Date.now()`, no mutable state
+- **Comprehensive param validation** — reject invalid params early with clear error messages
+- **Determinism** — same input + same params = same result, always
+- **Isolation** — never import from other plugins or from `@run-iq/core` directly
+
+<Callout type="tip" title="Reference implementation">
+  See the [Fiscal Plugin](/docs/plugins/fiscal) for a production-quality plugin with 6 models, jurisdiction resolution, and meta-rules.
+</Callout>
+
+---
+
+Next: [Fiscal Plugin](/docs/plugins/fiscal)

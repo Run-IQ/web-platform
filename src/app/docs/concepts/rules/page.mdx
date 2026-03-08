@@ -1,0 +1,150 @@
+import { Callout } from '@/components/docs/Callout'
+
+# Rules
+
+A **rule** is the fundamental unit in Run-IQ. It declares a calculation to perform, when to apply it, and with what parameters.
+
+## Rule Structure
+
+```typescript
+interface Rule {
+  id: string;                    // Unique identifier
+  version: number;               // Rule version number
+  model: string;                 // Calculation model ("FLAT_RATE", "PROGRESSIVE_BRACKET", ...)
+  params: unknown;               // Model-specific parameters
+  condition?: Expression;        // When to apply this rule
+  priority: number;              // Dominance ordering (higher = evaluated first)
+  effectiveFrom: Date;           // Rule is active from this date
+  effectiveUntil: Date | null;   // Rule expires after this date (null = no expiry)
+  tags: readonly string[];       // Labels for filtering
+  checksum: string;              // SHA-256 of serialized params
+  schemaVersion?: string;        // Optional schema version
+}
+```
+
+## Key Fields
+
+### `model` — What to Calculate
+
+The `model` field is a string key that maps to a registered `CalculationModel`. The engine itself doesn't know what `"FLAT_RATE"` means — it looks it up in the `ModelRegistry`, which was populated by a plugin.
+
+Available models depend on which plugins are loaded. The fiscal plugin provides:
+
+| Model | Description |
+|---|---|
+| `FLAT_RATE` | `base * rate` |
+| `PROGRESSIVE_BRACKET` | Cumulative bracket calculation |
+| `MINIMUM_TAX` | `max(base * rate, minimum)` |
+| `THRESHOLD_BASED` | Applies only above a threshold |
+| `FIXED_AMOUNT` | Returns a constant value |
+| `COMPOSITE` | Combines sub-models (SUM, MAX, MIN) |
+
+### `params` — Model Parameters
+
+Each model defines its own parameter schema. The engine passes `params` to the model without inspecting it — the model validates and uses them.
+
+```typescript
+// FLAT_RATE params
+{ rate: 0.18, base: "revenue" }
+
+// PROGRESSIVE_BRACKET params
+{
+  base: "taxableIncome",
+  brackets: [
+    { from: 0, to: 500_000, rate: 0 },
+    { from: 500_000, to: 1_000_000, rate: 0.10 },
+    { from: 1_000_000, to: null, rate: 0.25 },
+  ]
+}
+
+// COMPOSITE params
+{
+  aggregation: "SUM",
+  steps: [
+    { model: "FLAT_RATE", params: { rate: 0.07, base: "grossSalary" } },
+    { model: "FLAT_RATE", params: { rate: 0.04, base: "grossSalary" } },
+  ]
+}
+```
+
+### `condition` — When to Apply
+
+A rule's condition is evaluated by a DSL evaluator. The condition contains:
+
+```typescript
+interface Expression {
+  dsl: string;       // Which evaluator to use ("jsonlogic", "cel", ...)
+  value: unknown;    // The expression itself (DSL-specific format)
+}
+```
+
+The engine passes the condition to the DSL evaluator registered under `dsl`. If the evaluator returns `true`, the rule is applied.
+
+```typescript
+// JSONLogic — apply if revenue > 0
+{
+  dsl: "jsonlogic",
+  value: { ">": [{ "var": "revenue" }, 0] }
+}
+
+// JSONLogic — apply if employee type is "permanent"
+{
+  dsl: "jsonlogic",
+  value: { "==": [{ "var": "employeeType" }, "permanent"] }
+}
+```
+
+<Callout type="info" title="DSL agnostic">
+  The engine core never parses condition values. It delegates entirely to the
+  registered DSL evaluator. You can use JSONLogic, CEL, or any custom DSL — just
+  register the evaluator.
+</Callout>
+
+### `priority` — Dominance Order
+
+When multiple rules match, priority determines evaluation order. Higher priority rules are evaluated first. If two rules have the same priority and `strict` mode is enabled, the engine throws a `RuleConflictError`.
+
+### `effectiveFrom` / `effectiveUntil` — Temporal Filtering
+
+Rules are only considered if the evaluation date falls within their `[effectiveFrom, effectiveUntil]` window. Set `effectiveUntil` to `null` for rules with no expiry. This enables versioning — you can have two versions of the same tax rule with different effective periods, and the engine will automatically select the correct one.
+
+### `checksum` — Integrity Verification
+
+The checksum is a SHA-256 hash of `JSON.stringify(params)`. It's computed once when the rule is created and stored alongside it. At evaluation time, the engine re-computes the hash and compares — any mismatch indicates the rule's parameters were modified after approval.
+
+### `tags` — Filtering Labels
+
+Tags allow the host application to filter rules before evaluation. Pass tags in `input.meta.tags`:
+
+```typescript
+// Only evaluate rules tagged "irpp" or "tva"
+const input = {
+  data: { revenue: 5_000_000 },
+  requestId: 'eval-001',
+  meta: {
+    tenantId: 'my-company',
+    tags: ['irpp', 'tva'],
+  },
+};
+await engine.evaluate(rules, input);
+```
+
+## Rule Lifecycle
+
+```
+Rule created → checksum computed → stored in database
+                                          ↓
+Engine.evaluate() called → rules loaded → filtered by date/tags
+                                          ↓
+                             conditions evaluated by DSL
+                                          ↓
+                          matching rules sorted by priority
+                                          ↓
+                          each rule's model.calculate() called
+                                          ↓
+                        results aggregated → trace built → snapshot saved
+```
+
+---
+
+Next: [Engine](/docs/concepts/engine)

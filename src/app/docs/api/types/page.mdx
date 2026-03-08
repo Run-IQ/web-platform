@@ -1,0 +1,455 @@
+import { Callout } from '@/components/docs/Callout'
+
+# Type Reference
+
+All public types exported by Run-IQ packages.
+
+## Core Types (`@run-iq/core`)
+
+### Rule
+
+```typescript
+interface Rule {
+  readonly id: string;
+  readonly version: number;
+  readonly model: string;
+  readonly params: unknown;
+  readonly condition?: Expression;
+  readonly priority: number;
+  readonly effectiveFrom: Date;
+  readonly effectiveUntil: Date | null;
+  readonly tags: readonly string[];
+  readonly checksum: string;
+  readonly schemaVersion?: string;
+}
+```
+
+### Expression
+
+```typescript
+interface Expression {
+  readonly dsl: string;
+  readonly value: unknown;
+}
+```
+
+### EvaluationInput
+
+```typescript
+interface EvaluationInput {
+  readonly data: Record<string, unknown>;
+  readonly requestId: string;
+  readonly meta: {
+    readonly tenantId: string;
+    readonly userId?: string;
+    readonly tags?: readonly string[];
+    readonly context?: Record<string, unknown>;
+    readonly effectiveDate?: Date;
+  };
+}
+```
+
+### EvaluationResult
+
+```typescript
+interface EvaluationResult {
+  readonly requestId: string;
+  readonly value: unknown;
+  readonly breakdown: readonly BreakdownItem[];
+  readonly appliedRules: readonly Rule[];
+  readonly skippedRules: readonly SkippedRule[];
+  readonly trace: EvaluationTrace;
+  readonly snapshotId: string;
+  readonly engineVersion: string;
+  readonly pluginVersions: Record<string, string>;
+  readonly dslVersions: Record<string, string>;
+  readonly timestamp: Date;
+  readonly meta?: Record<string, unknown>;
+}
+```
+
+### BreakdownItem
+
+```typescript
+interface BreakdownItem {
+  readonly ruleId: string;
+  readonly contribution: unknown;
+  readonly modelUsed: string;
+  readonly label?: string;
+  readonly detail?: unknown;
+}
+```
+
+### SkippedRule
+
+```typescript
+interface SkippedRule {
+  readonly rule: Rule;
+  readonly reason: SkipReason;
+}
+```
+
+### SkipReason
+
+```typescript
+type SkipReason =
+  | 'INACTIVE_DATE'
+  | 'CONDITION_FALSE'
+  | 'CONDITION_TIMEOUT'
+  | 'DSL_ERROR'
+  | 'DSL_NOT_FOUND'
+  | 'CHECKSUM_MISMATCH'
+  | 'INVALID_PARAMS'
+  | 'TAG_MISMATCH'
+  | 'INHIBITED_BY_META_RULE';
+```
+
+### EvaluationTrace
+
+```typescript
+interface EvaluationTrace {
+  readonly steps: readonly TraceStep[];
+  readonly totalDurationMs: number;
+}
+```
+
+### TraceStep
+
+```typescript
+interface TraceStep {
+  readonly ruleId: string;
+  readonly conditionResult: boolean;
+  readonly conditionDetail: unknown;
+  readonly modelUsed: string;
+  readonly inputSnapshot: unknown;
+  readonly contribution: unknown;
+  readonly detail?: unknown;
+  readonly durationMs: number;
+  readonly dslUsed?: string;
+}
+```
+
+### CalculationModel
+
+```typescript
+interface CalculationModel {
+  readonly name: string;
+  readonly version: string;
+
+  validateParams(params: unknown): ValidationResult;
+
+  calculate(
+    input: Record<string, unknown>,
+    matchedRule: Readonly<Rule>,
+    params: unknown,
+  ): number | CalculationOutput;
+}
+```
+
+### CalculationOutput
+
+```typescript
+interface CalculationOutput {
+  readonly value: number;
+  readonly detail?: unknown;
+}
+```
+
+### ValidationResult
+
+```typescript
+interface ValidationResult {
+  readonly valid: boolean;
+  readonly errors?: readonly string[];
+}
+```
+
+### DSLEvaluator
+
+```typescript
+interface DSLEvaluator {
+  readonly dsl: string;
+  readonly version: string;
+
+  evaluate(expression: unknown, context: Record<string, unknown>): boolean;
+}
+```
+
+### PPEPlugin
+
+```typescript
+interface PPEPlugin {
+  readonly name: string;
+  readonly version: string;
+
+  onInit(context: PluginContext): void;
+  beforeEvaluate?(input: EvaluationInput, rules: ReadonlyArray<Rule>): EvaluationInput;
+  afterEvaluate?(input: EvaluationInput, result: EvaluationResult): EvaluationResult;
+  onError?(error: PPEError, input: EvaluationInput): void;
+  teardown?(): void;
+}
+```
+
+### PluginContext
+
+```typescript
+interface PluginContext {
+  readonly modelRegistry: ModelRegistry;
+  readonly dslRegistry: DSLRegistry;
+  readonly engineVersion: string;
+}
+```
+
+### ISnapshotAdapter
+
+```typescript
+interface ISnapshotAdapter {
+  save(snapshot: Snapshot): Promise<string>;
+  get(snapshotId: string): Promise<Snapshot>;
+  exists(requestId: string): Promise<boolean>;
+}
+```
+
+### Snapshot
+
+```typescript
+interface Snapshot {
+  readonly id: string;
+  readonly requestId: string;
+  readonly engineVersion: string;
+  readonly pluginVersions: Record<string, string>;
+  readonly dslVersions: Record<string, string>;
+  readonly inputSnapshot: EvaluationInput;
+  readonly rulesSnapshot: ReadonlyArray<Rule>;
+  readonly result: EvaluationResult;
+  readonly trace: EvaluationTrace;
+  readonly checksum: string;
+  readonly timestamp: Date;
+  readonly tenantId: string;
+}
+```
+
+### PPEEngineConfig
+
+```typescript
+interface PPEEngineConfig {
+  readonly plugins: PPEPlugin[];
+  readonly dsls: DSLEvaluator[];
+  readonly snapshot?: ISnapshotAdapter;
+  readonly strict?: boolean;
+  readonly timeout?: {
+    readonly dsl?: number;
+    readonly hook?: number;
+    readonly pipeline?: number;
+  };
+  readonly onConflict?: 'throw' | 'first';
+  readonly onChecksumMismatch?: 'throw' | 'skip';
+  readonly dryRun?: boolean;
+}
+```
+
+## Fiscal Types (`@run-iq/plugin-fiscal`)
+
+### FiscalRule
+
+```typescript
+interface FiscalRule extends Rule {
+  readonly model: FiscalCalculationModel;
+  readonly jurisdiction: FiscalJurisdiction;
+  readonly scope: FiscalScope;
+  readonly country: string;
+  readonly category: string;
+  readonly params:
+    | FlatRateParams
+    | BracketParams
+    | MinimumTaxParams
+    | ThresholdParams
+    | FixedAmountParams
+    | CompositeParams;
+}
+```
+
+### FiscalJurisdiction
+
+```typescript
+type FiscalJurisdiction = 'NATIONAL' | 'REGIONAL' | 'MUNICIPAL';
+```
+
+### FiscalScope
+
+```typescript
+type FiscalScope = 'GLOBAL' | 'ORGANIZATION' | 'USER';
+```
+
+### FiscalCalculationModel
+
+```typescript
+type FiscalCalculationModel =
+  | 'FLAT_RATE'
+  | 'PROGRESSIVE_BRACKET'
+  | 'MINIMUM_TAX'
+  | 'THRESHOLD_BASED'
+  | 'FIXED_AMOUNT'
+  | 'COMPOSITE'
+  | 'META_INHIBITION'
+  | 'META_SUBSTITUTION'
+  | 'META_SHORT_CIRCUIT';
+```
+
+### FlatRateParams
+
+```typescript
+interface FlatRateParams {
+  readonly rate: number;
+  readonly base: string;
+}
+```
+
+### BracketParams
+
+```typescript
+interface BracketParams {
+  readonly base: string;
+  readonly brackets: ReadonlyArray<{
+    readonly from: number;
+    readonly to: number | null;
+    readonly rate: number;
+  }>;
+}
+```
+
+### MinimumTaxParams
+
+```typescript
+interface MinimumTaxParams {
+  readonly rate: number;
+  readonly base: string;
+  readonly minimum: number;
+}
+```
+
+### ThresholdParams
+
+```typescript
+interface ThresholdParams {
+  readonly base: string;
+  readonly threshold: number;
+  readonly rate: number;
+  readonly above_only: boolean;
+}
+```
+
+### FixedAmountParams
+
+```typescript
+interface FixedAmountParams {
+  readonly amount: number;
+  readonly currency: string;
+}
+```
+
+### CompositeParams
+
+```typescript
+interface CompositeParams {
+  readonly steps: ReadonlyArray<{
+    readonly model: string;
+    readonly params: unknown;
+    readonly label?: string;
+  }>;
+  readonly aggregation: 'SUM' | 'MAX' | 'MIN';
+}
+```
+
+## SDK Types (`@run-iq/plugin-sdk`)
+
+### SchemaFieldDef
+
+```typescript
+interface SchemaFieldDef {
+  readonly type: 'number' | 'string' | 'boolean' | 'array' | 'object';
+  readonly min?: number;
+  readonly max?: number;
+  readonly enum?: readonly string[];
+  readonly required?: boolean;
+}
+```
+
+### SchemaDefinition
+
+```typescript
+type SchemaDefinition = Record<string, SchemaFieldDef>;
+```
+
+### PluginDescriptor
+
+```typescript
+interface PluginDescriptor {
+  readonly name: string;
+  readonly version: string;
+  readonly description: string;
+  readonly domainLabel: string;
+  readonly ruleExtensions: readonly RuleFieldDescriptor[];
+  readonly inputFields: readonly InputFieldDescriptor[];
+  readonly examples: readonly RuleExample[];
+  readonly promptGuidelines: readonly string[];
+}
+```
+
+### PluginBundle
+
+```typescript
+interface PluginBundle {
+  readonly plugin: PPEPlugin;
+  readonly descriptor: PluginDescriptor;
+  readonly dsls?: readonly DSLEvaluator[];
+}
+```
+
+### RuleFieldDescriptor
+
+```typescript
+interface RuleFieldDescriptor {
+  readonly name: string;
+  readonly type: 'string' | 'number' | 'boolean';
+  readonly required: boolean;
+  readonly description: string;
+  readonly enum?: readonly string[];
+}
+```
+
+### InputFieldDescriptor
+
+```typescript
+interface InputFieldDescriptor {
+  readonly name: string;
+  readonly type: 'string' | 'number' | 'boolean' | 'object' | 'array';
+  readonly description: string;
+  readonly examples?: readonly unknown[];
+}
+```
+
+### RuleExample
+
+```typescript
+interface RuleExample {
+  readonly title: string;
+  readonly description: string;
+  readonly rule: Record<string, unknown>;
+  readonly input?: Record<string, unknown>;
+}
+```
+
+### TestReport
+
+```typescript
+interface TestReport {
+  readonly passed: string[];
+  readonly failed: Array<{ test: string; error: string }>;
+  readonly summary: 'PASS' | 'FAIL';
+}
+```
+
+---
+
+Next: [Errors](/docs/api/errors)

@@ -1,0 +1,123 @@
+import { Callout } from '@/components/docs/Callout'
+
+# Configuration
+
+The `PPEEngine` constructor accepts a configuration object that controls every aspect of the engine's behavior.
+
+## Engine Options
+
+```typescript
+const engine = new PPEEngine({
+  plugins: [new FiscalPlugin()],
+  dsls: [new JsonLogicEvaluator()],
+  snapshot: mySnapshotAdapter,
+  strict: true,
+  dryRun: false,
+  timeout: { dsl: 100, hook: 500, pipeline: 5000 },
+  onChecksumMismatch: 'throw',
+});
+```
+
+### Required Options
+
+| Option | Type | Description |
+|---|---|---|
+| `plugins` | `PPEPlugin[]` | Domain plugins that register calculation models |
+| `dsls` | `DSLEvaluator[]` | Condition evaluators (JSONLogic, CEL, ...) |
+
+### Snapshot Options
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `snapshot` | `ISnapshotAdapter` | `undefined` | Persistence adapter for evaluation snapshots |
+| `strict` | `boolean` | `true` | If true, snapshot save failure throws `SnapshotFailureError` |
+| `dryRun` | `boolean` | `false` | If true, skip snapshot persistence entirely |
+
+### Safety Options
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `timeout.dsl` | `number` | `100` | Max milliseconds for a single DSL condition evaluation |
+| `timeout.hook` | `number` | `500` | Max milliseconds for a plugin hook (beforeEvaluate, afterEvaluate) |
+| `timeout.pipeline` | `number` | `5000` | Max milliseconds for the entire evaluation pipeline |
+| `onConflict` | `'throw' \| 'first'` | `'throw'` (strict) | What to do when rules share the same priority |
+| `onChecksumMismatch` | `'throw' \| 'skip'` | — | What to do when a rule's checksum doesn't match its params |
+
+## Common Configurations
+
+### Development / Playground
+
+```typescript
+new PPEEngine({
+  plugins: [new FiscalPlugin()],
+  dsls: [new JsonLogicEvaluator()],
+  dryRun: true,
+  onChecksumMismatch: 'skip',
+});
+```
+
+No persistence, relaxed validation — fast iteration.
+
+### Production
+
+```typescript
+new PPEEngine({
+  plugins: [new FiscalPlugin()],
+  dsls: [new JsonLogicEvaluator()],
+  snapshot: new PostgresSnapshotAdapter(db),
+  strict: true,
+  dryRun: false,
+  onChecksumMismatch: 'throw',
+  timeout: { dsl: 100, hook: 500, pipeline: 5000 },
+});
+```
+
+Full integrity enforcement. Snapshot failures halt evaluation. Invalid checksums reject rules.
+
+### Testing
+
+```typescript
+new PPEEngine({
+  plugins: [new FiscalPlugin()],
+  dsls: [new JsonLogicEvaluator()],
+  snapshot: new InMemorySnapshotAdapter(),
+  strict: true,
+  dryRun: false,
+});
+```
+
+In-memory snapshot adapter for testing snapshot behavior without a database.
+
+<Callout type="warning" title="Strict mode">
+  In `strict: true` mode, if `snapshot.save()` fails, the engine throws
+  `SnapshotFailureError` and the evaluation result is **not returned** — even
+  though the calculation itself succeeded. This ensures no evaluation goes
+  unrecorded in production.
+</Callout>
+
+## Snapshot Adapter Interface
+
+Any object implementing `ISnapshotAdapter` can serve as the persistence layer:
+
+```typescript
+interface ISnapshotAdapter {
+  save(snapshot: Snapshot): Promise<string>;
+  get(snapshotId: string): Promise<Snapshot>;
+  exists(requestId: string): Promise<boolean>;
+}
+```
+
+The `exists()` method enables **idempotency** — if a `requestId` has already been evaluated, the engine returns the existing snapshot instead of re-computing.
+
+## Checksum Verification
+
+Every rule carries a `checksum` — a SHA-256 hash of its serialized `params`. The engine verifies this at evaluation time:
+
+- `onChecksumMismatch: 'throw'` — the engine throws an error
+- `onChecksumMismatch: 'skip'` — the rule is skipped with reason `CHECKSUM_MISMATCH`, pipeline continues
+
+This prevents tampering with rule parameters after they've been approved.
+
+---
+
+Next: [Rules](/docs/concepts/rules)

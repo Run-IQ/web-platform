@@ -1,0 +1,362 @@
+import { Callout } from '@/components/docs/Callout'
+
+# Calculation Models
+
+A calculation model encapsulates a single computation algorithm. Models are stateless, deterministic, and registered by plugins into the `ModelRegistry`.
+
+## CalculationModel Interface
+
+```typescript
+interface CalculationModel {
+  readonly name: string;
+  readonly version: string;
+
+  validateParams(params: unknown): ValidationResult;
+
+  calculate(
+    input: Record<string, unknown>,
+    matchedRule: Readonly<Rule>,
+    params: unknown,
+  ): number | CalculationOutput;
+}
+```
+
+## CalculationOutput
+
+Simple models return a `number`. Complex models return a `CalculationOutput` with an optional `detail` for transparency:
+
+```typescript
+interface CalculationOutput {
+  readonly value: number;
+  readonly detail?: unknown;
+}
+```
+
+The `detail` field is model-specific — bracket breakdowns, step-by-step results, threshold indicators, etc. It's included in the trace and snapshot for auditability.
+
+## BaseModel
+
+The `@run-iq/plugin-sdk` provides `BaseModel` as the base class for all models:
+
+```typescript
+import { BaseModel } from '@run-iq/plugin-sdk';
+
+abstract class BaseModel implements CalculationModel {
+  abstract readonly name: string;
+  abstract readonly version: string;
+  abstract validateParams(params: unknown): ValidationResult;
+  abstract calculate(
+    input: Record<string, unknown>,
+    matchedRule: Readonly<Rule>,
+    params: unknown,
+  ): number | CalculationOutput;
+}
+```
+
+## FLAT_RATE
+
+**Formula:** `input[base] * rate`
+
+**Params:**
+```typescript
+interface FlatRateParams {
+  rate: number;   // rate in [0, 1]
+  base: string;   // key in input.data
+}
+```
+
+**Returns:** `number`
+
+**Example:** VAT 18% on revenue of 5,000,000 XOF
+
+```typescript
+// Params
+{ rate: 0.18, base: 'revenue' }
+
+// Input
+{ revenue: 5_000_000 }
+
+// Result: 5,000,000 × 0.18 = 900,000
+```
+
+**Validation:** `rate` must be a number in [0, 1], `base` must be a non-empty string.
+
+## PROGRESSIVE_BRACKET
+
+**Formula:** cumulative — each bracket is taxed at its own rate, only on the portion within that bracket's range.
+
+**Params:**
+```typescript
+interface BracketParams {
+  base: string;
+  brackets: Array<{
+    from: number;
+    to: number | null;  // null = uncapped top bracket
+    rate: number;
+  }>;
+}
+```
+
+**Returns:** `CalculationOutput` with `detail` = array of bracket results
+
+**Example:** Togo IRPP 2025 on taxable income of 4,200,000 XOF
+
+```typescript
+// Params
+{
+  base: 'income',
+  brackets: [
+    { from: 0,         to: 500_000,   rate: 0 },
+    { from: 500_000,   to: 1_000_000, rate: 0.10 },
+    { from: 1_000_000, to: 3_000_000, rate: 0.15 },
+    { from: 3_000_000, to: 5_000_000, rate: 0.25 },
+    { from: 5_000_000, to: null,      rate: 0.35 },
+  ],
+}
+```
+
+**Calculation walkthrough:**
+
+| Bracket | Taxable | Rate | Contribution |
+|---|---|---|---|
+| 0 — 500,000 | 500,000 | 0% | 0 |
+| 500,000 — 1,000,000 | 500,000 | 10% | 50,000 |
+| 1,000,000 — 3,000,000 | 2,000,000 | 15% | 300,000 |
+| 3,000,000 — 5,000,000 | 1,200,000 | 25% | 300,000 |
+| **Total** | | | **650,000** |
+
+**Detail structure:**
+```typescript
+[
+  { from: 0, to: 500000, rate: 0, taxable: 500000, contribution: 0 },
+  { from: 500000, to: 1000000, rate: 0.10, taxable: 500000, contribution: 50000 },
+  { from: 1000000, to: 3000000, rate: 0.15, taxable: 2000000, contribution: 300000 },
+  { from: 3000000, to: 5000000, rate: 0.25, taxable: 1200000, contribution: 300000 },
+]
+```
+
+**Validation:** `base` must be a string, `brackets` must be a non-empty array.
+
+## MINIMUM_TAX
+
+**Formula:** `MAX(input[base] * rate, minimum)`
+
+**Params:**
+```typescript
+interface MinimumTaxParams {
+  rate: number;
+  base: string;
+  minimum: number;
+}
+```
+
+**Returns:** `CalculationOutput` with detail
+
+**Example:** Corporate tax (IS) at 1% with floor 500,000 XOF, revenue 30,000,000
+
+```typescript
+// Params
+{ rate: 0.01, base: 'revenue', minimum: 500_000 }
+
+// Computed: 30,000,000 × 0.01 = 300,000
+// Minimum: 500,000
+// Result: MAX(300,000, 500,000) = 500,000 (minimum applied)
+```
+
+**Detail structure:**
+```typescript
+{
+  base: 30000000,
+  rate: 0.01,
+  computed: 300000,
+  minimum: 500000,
+  appliedMinimum: true,
+}
+```
+
+**Validation:** `rate` in [0, 1], `base` must be a string, `minimum` >= 0.
+
+## THRESHOLD_BASED
+
+**Formula:** applies tax only when `input[base]` exceeds `threshold`. If `above_only` is `true`, only the amount above the threshold is taxed.
+
+**Params:**
+```typescript
+interface ThresholdParams {
+  base: string;
+  threshold: number;
+  rate: number;
+  above_only: boolean;
+}
+```
+
+**Returns:** `CalculationOutput` with detail
+
+**Example:** Surtax on income above 10,000,000 at 5%, income = 15,000,000
+
+```typescript
+// Params
+{ base: 'income', threshold: 10_000_000, rate: 0.05, above_only: true }
+
+// Below threshold? No (15M > 10M)
+// Taxable: 15,000,000 - 10,000,000 = 5,000,000 (above_only)
+// Result: 5,000,000 × 0.05 = 250,000
+```
+
+If `above_only` is `false`, the full base value is taxed when above threshold:
+```
+// Result: 15,000,000 × 0.05 = 750,000
+```
+
+If the base is at or below the threshold, the result is `0`.
+
+**Detail structure:**
+```typescript
+{
+  base: 15000000,
+  threshold: 10000000,
+  belowThreshold: false,
+  aboveOnly: true,
+  taxableAmount: 5000000,
+  rate: 0.05,
+}
+```
+
+**Validation:** `base` must be a string, `threshold` >= 0, `rate` in [0, 1], `above_only` must be boolean.
+
+## FIXED_AMOUNT
+
+**Formula:** returns a constant `amount` regardless of input data.
+
+**Params:**
+```typescript
+interface FixedAmountParams {
+  amount: number;
+  currency: string;
+}
+```
+
+**Returns:** `number`
+
+**Example:** Annual filing fee of 50,000 XOF
+
+```typescript
+// Params
+{ amount: 50_000, currency: 'XOF' }
+
+// Result: 50,000 (always)
+```
+
+**Validation:** `amount` >= 0, `currency` must be a string.
+
+## COMPOSITE
+
+**Formula:** executes multiple sub-models and aggregates their results using `SUM`, `MAX`, or `MIN`.
+
+**Params:**
+```typescript
+interface CompositeParams {
+  steps: Array<{
+    model: string;
+    params: unknown;
+    label?: string;
+  }>;
+  aggregation: 'SUM' | 'MAX' | 'MIN';
+}
+```
+
+**Returns:** `CalculationOutput` with detail
+
+**Example:** CNSS contributions (employee 4% + employer 16.5% + injury 2.5%)
+
+```typescript
+// Params
+{
+  aggregation: 'SUM',
+  steps: [
+    { model: 'FLAT_RATE', params: { rate: 0.04, base: 'grossSalary' }, label: 'Employee' },
+    { model: 'FLAT_RATE', params: { rate: 0.165, base: 'grossSalary' }, label: 'Employer' },
+    { model: 'FLAT_RATE', params: { rate: 0.025, base: 'grossSalary' }, label: 'Injury' },
+  ],
+}
+
+// Input: { grossSalary: 1_000_000 }
+// Steps: 40,000 + 165,000 + 25,000
+// Result (SUM): 230,000
+```
+
+**Detail structure:**
+```typescript
+{
+  aggregation: 'SUM',
+  steps: [
+    { model: 'FLAT_RATE', label: 'Employee', value: 40000 },
+    { model: 'FLAT_RATE', label: 'Employer', value: 165000 },
+    { model: 'FLAT_RATE', label: 'Injury', value: 25000 },
+  ],
+}
+```
+
+**Validation:** `steps` must be a non-empty array, `aggregation` must be `'SUM'`, `'MAX'`, or `'MIN'`.
+
+## Decimal.js Requirement
+
+<Callout type="warning" title="Non-negotiable">
+  All monetary calculations **must** use `decimal.js`. Native JavaScript floating-point arithmetic is forbidden in models.
+</Callout>
+
+```typescript
+// 0.1 + 0.2 in JavaScript:
+0.1 + 0.2 // → 0.30000000000000004  (WRONG)
+
+// With decimal.js:
+new Decimal('0.1').plus('0.2').toNumber() // → 0.3  (CORRECT)
+```
+
+In a fiscal engine, rounding errors are not bugs — they're legal violations. Every model in `@run-iq/plugin-fiscal` uses `Decimal` for all arithmetic:
+
+```typescript
+const baseValue = new Decimal(String(input[p.base] ?? 0));
+const rate = new Decimal(String(p.rate));
+return baseValue.mul(rate).toNumber();
+```
+
+## Creating Custom Models
+
+To create a model for your domain:
+
+1. Extend `BaseModel` from `@run-iq/plugin-sdk`
+2. Implement `validateParams()` using `SchemaValidator`
+3. Implement `calculate()` using `Decimal.js` for monetary operations
+4. Register via your plugin's `models` array
+
+```typescript
+import { BaseModel, SchemaValidator } from '@run-iq/plugin-sdk';
+import Decimal from 'decimal.js';
+
+class MyModel extends BaseModel {
+  readonly name = 'MY_MODEL';
+  readonly version = '1.0.0';
+
+  validateParams(params: unknown) {
+    return SchemaValidator.validate(params, {
+      rate: { type: 'number', min: 0 },
+      base: { type: 'string' },
+    });
+  }
+
+  calculate(input, matchedRule, params) {
+    const p = params as { rate: number; base: string };
+    const base = new Decimal(String(input[p.base] ?? 0));
+    return base.mul(p.rate).toNumber();
+  }
+}
+```
+
+<Callout type="tip" title="Full tutorial">
+  See the [Plugin Guide](/docs/plugins/guide) for a complete walkthrough of building a plugin with custom models.
+</Callout>
+
+---
+
+Next: [Snapshots & Audit](/docs/concepts/snapshots)

@@ -1,0 +1,170 @@
+import { Callout } from '@/components/docs/Callout'
+
+# Quick Start
+
+Evaluate a fiscal rule in under 5 minutes.
+
+## 1. Create the Engine
+
+```typescript
+import { PPEEngine } from '@run-iq/core';
+import { JsonLogicEvaluator } from '@run-iq/dsl-jsonlogic';
+import { FiscalPlugin } from '@run-iq/plugin-fiscal';
+
+const engine = new PPEEngine({
+  plugins: [new FiscalPlugin()],
+  dsls: [new JsonLogicEvaluator()],
+  dryRun: true,
+});
+```
+
+The engine is configured in **dry-run mode** — no snapshot persistence. This is perfect for getting started.
+
+## 2. Define a Rule
+
+A rule declares **what** to calculate and **when**. Here's a flat-rate VAT rule:
+
+```typescript
+const rules = [
+  {
+    id: 'vat-18',
+    version: 1,
+    model: 'FLAT_RATE',
+    priority: 1,
+    params: {
+      rate: 0.18,
+      base: 'revenue',
+    },
+    condition: {
+      dsl: 'jsonlogic',
+      value: { '>': [{ var: 'revenue' }, 0] },
+    },
+    effectiveFrom: new Date('2025-01-01'),
+    effectiveUntil: null,
+    checksum: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+    tags: ['tva'],
+  },
+];
+```
+
+<Callout type="info" title="Checksum">
+  The `checksum` is a SHA-256 hash of the rule's `params` object (JSON-serialized).
+  In production, it ensures rule integrity. For development, you can set
+  `onChecksumMismatch: 'skip'` in engine config to bypass validation.
+</Callout>
+
+## 3. Define Input
+
+Input contains `data` (the values your rules operate on), a `requestId` for idempotency, and `meta` (context):
+
+```typescript
+const input = {
+  data: {
+    revenue: 5_000_000,
+  },
+  requestId: 'eval-001',
+  meta: {
+    tenantId: 'my-company',
+    context: { country: 'TG', currency: 'XOF' },
+  },
+};
+```
+
+## 4. Evaluate
+
+```typescript
+const result = await engine.evaluate(rules, input);
+
+console.log(result.value);
+// → 900000
+
+console.log(result.trace.steps[0]);
+// → { ruleId: 'vat-18', modelUsed: 'FLAT_RATE', contribution: 900000, ... }
+```
+
+The result contains:
+- `value` — the total computed value (sum of all matching rules)
+- `breakdown` — per-rule contribution details
+- `trace` — step-by-step execution log with timing and metadata
+- `requestId` — echo of the input requestId
+
+## 5. Inspect the Trace
+
+Every evaluation produces a detailed trace:
+
+```typescript
+for (const step of result.trace.steps) {
+  console.log(`${step.ruleId}: ${step.contribution} (${step.modelUsed})`);
+}
+// → vat-18: 900000 (FLAT_RATE)
+```
+
+Skipped rules are recorded separately in `result.skippedRules`:
+
+```typescript
+for (const skip of result.skippedRules) {
+  console.log(`${skip.rule.id}: ${skip.reason}`);
+}
+// → expired-rule: INACTIVE_DATE
+```
+
+## Complete Example
+
+```typescript
+import { PPEEngine } from '@run-iq/core';
+import { JsonLogicEvaluator } from '@run-iq/dsl-jsonlogic';
+import { FiscalPlugin } from '@run-iq/plugin-fiscal';
+
+async function main() {
+  const engine = new PPEEngine({
+    plugins: [new FiscalPlugin()],
+    dsls: [new JsonLogicEvaluator()],
+    dryRun: true,
+    onChecksumMismatch: 'skip',
+  });
+
+  const result = await engine.evaluate(
+    [
+      {
+        id: 'irpp-2025',
+        version: 1,
+        model: 'PROGRESSIVE_BRACKET',
+        priority: 1,
+        params: {
+          base: 'taxableIncome',
+          brackets: [
+            { from: 0, to: 500_000, rate: 0 },
+            { from: 500_000, to: 1_000_000, rate: 0.10 },
+            { from: 1_000_000, to: 3_000_000, rate: 0.15 },
+            { from: 3_000_000, to: 5_000_000, rate: 0.25 },
+            { from: 5_000_000, to: null, rate: 0.35 },
+          ],
+        },
+        condition: {
+          dsl: 'jsonlogic',
+          value: { '>': [{ var: 'taxableIncome' }, 0] },
+        },
+        effectiveFrom: new Date('2025-01-01'),
+        effectiveUntil: null,
+        tags: ['irpp'],
+        checksum: '...',
+      },
+    ],
+    {
+      data: { taxableIncome: 4_200_000 },
+      requestId: 'eval-irpp-001',
+      meta: { tenantId: 'my-company' },
+    },
+  );
+
+  console.log('Tax due:', result.value);
+  // → Tax due: 625000
+  // Breakdown: 0 + 25000 + 300000 + 300000 = 625000
+}
+
+main();
+```
+
+---
+
+Next: [Configuration](/docs/getting-started/configuration)

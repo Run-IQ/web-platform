@@ -1,0 +1,217 @@
+import { Callout } from '@/components/docs/Callout'
+
+# Error Reference
+
+All errors in Run-IQ extend `PPEError`, which adds a `code` property for programmatic handling.
+
+## Error Hierarchy
+
+```
+PPEError (base)
+├── RuleConflictError        RULE_CONFLICT
+├── ModelNotFoundError       MODEL_NOT_FOUND
+├── DSLNotFoundError         DSL_NOT_FOUND
+├── DSLTimeoutError          DSL_TIMEOUT
+├── DSLEvaluationError       DSL_EVALUATION_ERROR
+├── SnapshotFailureError     SNAPSHOT_FAILURE
+└── ValidationError          VALIDATION_ERROR
+```
+
+## PPEError
+
+Base class for all Run-IQ errors.
+
+```typescript
+class PPEError extends Error {
+  readonly code: string;
+  constructor(message: string, code: string);
+}
+```
+
+All errors expose a `code` property for switch-based handling without relying on `instanceof`.
+
+## RuleConflictError
+
+**Code:** `RULE_CONFLICT`
+
+**Thrown when:** two or more rules share the same `priority` and `onConflict` is `'throw'`.
+
+```typescript
+class RuleConflictError extends PPEError {
+  readonly ruleIds: readonly string[];
+  readonly priority: number;
+}
+```
+
+**Example message:** `Rule conflict: rules [rule-a, rule-b] have the same priority 3000`
+
+**Resolution:** assign distinct priorities, or set `onConflict: 'first'` to let the engine pick the first rule.
+
+## ModelNotFoundError
+
+**Code:** `MODEL_NOT_FOUND`
+
+**Thrown when:** a rule's `model` field references a model name that no plugin registered.
+
+```typescript
+class ModelNotFoundError extends PPEError {
+  readonly modelName: string;
+}
+```
+
+**Example message:** `Model "UNKNOWN_MODEL" not found in ModelRegistry`
+
+**Resolution:** ensure the plugin registering this model is included in `config.plugins`.
+
+## DSLNotFoundError
+
+**Code:** `DSL_NOT_FOUND`
+
+**Thrown when:** a rule's `condition.dsl` references a DSL that no evaluator was registered for.
+
+```typescript
+class DSLNotFoundError extends PPEError {
+  readonly dslName: string;
+}
+```
+
+**Example message:** `DSL evaluator "cel" not found in DSLRegistry`
+
+**Resolution:** register the DSL evaluator in `config.dsls`, or remove the condition from the rule.
+
+<Callout type="info" title="Soft skip">
+  In the pipeline, missing DSL evaluators cause the rule to be skipped with reason `DSL_NOT_FOUND` rather than halting the entire pipeline.
+</Callout>
+
+## DSLTimeoutError
+
+**Code:** `DSL_TIMEOUT`
+
+**Thrown when:** a DSL condition evaluation exceeds `timeout.dsl` (default: 100ms).
+
+```typescript
+class DSLTimeoutError extends PPEError {
+  readonly dslName: string;
+  readonly timeoutMs: number;
+}
+```
+
+**Example message:** `DSL "jsonlogic" evaluation timed out after 100ms`
+
+**Resolution:** simplify the condition expression, or increase `timeout.dsl` in engine config.
+
+## DSLEvaluationError
+
+**Code:** `DSL_EVALUATION_ERROR`
+
+**Thrown when:** a DSL evaluator throws an unexpected error during condition evaluation.
+
+```typescript
+class DSLEvaluationError extends PPEError {
+  readonly dslName: string;
+  readonly originalError: unknown;
+}
+```
+
+**Example message:** `DSL "jsonlogic" evaluation failed: TypeError: Cannot read property 'x' of undefined`
+
+**Resolution:** fix the condition expression or the data it references.
+
+## SnapshotFailureError
+
+**Code:** `SNAPSHOT_FAILURE`
+
+**Thrown when:** `ISnapshotAdapter.save()` fails and `strict: true`.
+
+```typescript
+class SnapshotFailureError extends PPEError {
+  readonly cause_: unknown;
+}
+```
+
+**Example message:** `Snapshot save failed in strict mode`
+
+**Resolution:** fix the snapshot adapter (database connection, permissions, etc.), or set `strict: false` for lenient mode.
+
+<Callout type="warning" title="Result withheld">
+  When this error is thrown, the evaluation result is **not** returned — even though the calculation itself succeeded.
+</Callout>
+
+## ValidationError
+
+**Code:** `VALIDATION_ERROR`
+
+**Thrown when:** rule parameters fail `model.validateParams()`.
+
+```typescript
+class ValidationError extends PPEError {
+  readonly reasons: readonly string[];
+}
+```
+
+**Example reasons:** `['"rate" must be a number', '"base" is required']`
+
+**Resolution:** fix the rule's `params` object to match the model's expected schema.
+
+## Handling Errors
+
+### try/catch pattern
+
+```typescript
+import {
+  PPEError,
+  RuleConflictError,
+  SnapshotFailureError,
+} from '@run-iq/core';
+
+try {
+  const result = await engine.evaluate(rules, input);
+} catch (error) {
+  if (error instanceof RuleConflictError) {
+    console.error('Conflicting rules:', error.ruleIds);
+  } else if (error instanceof SnapshotFailureError) {
+    console.error('Snapshot failed:', error.cause_);
+  } else if (error instanceof PPEError) {
+    console.error(`PPE error [${error.code}]:`, error.message);
+  }
+}
+```
+
+### Code-based handling
+
+```typescript
+try {
+  const result = await engine.evaluate(rules, input);
+} catch (error) {
+  if (error instanceof PPEError) {
+    switch (error.code) {
+      case 'RULE_CONFLICT':
+        // handle conflict
+        break;
+      case 'SNAPSHOT_FAILURE':
+        // handle snapshot failure
+        break;
+      default:
+        // handle other PPE errors
+    }
+  }
+}
+```
+
+### onError hook
+
+Plugins can observe errors via the `onError` hook. This is called when a hook or DSL evaluation fails — it's read-only observation, not error recovery:
+
+```typescript
+class MyPlugin extends BasePlugin {
+  // ...
+
+  onError(error: PPEError, input: EvaluationInput): void {
+    logger.error({ code: error.code, requestId: input.requestId }, error.message);
+  }
+}
+```
+
+---
+
+Next: [Plugin Guide](/docs/plugins/guide)

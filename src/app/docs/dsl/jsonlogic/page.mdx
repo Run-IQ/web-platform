@@ -1,0 +1,230 @@
+import { Callout } from '@/components/docs/Callout'
+
+# JSONLogic Evaluator
+
+`@run-iq/dsl-jsonlogic` provides a JSONLogic condition evaluator for Run-IQ rules. It implements the `DSLEvaluator` interface and lets you write rule conditions as JSON objects.
+
+## Overview
+
+| Property | Value |
+|---|---|
+| **Package** | `@run-iq/dsl-jsonlogic` |
+| **DSL name** | `jsonlogic` |
+| **Version** | `1.0.0` |
+| **License** | MIT |
+
+## Installation
+
+```bash
+npm install @run-iq/dsl-jsonlogic
+```
+
+Peer dependency: `@run-iq/core`.
+
+## Registration
+
+Register the evaluator when creating the engine:
+
+```typescript
+import { PPEEngine } from '@run-iq/core';
+import { JsonLogicEvaluator } from '@run-iq/dsl-jsonlogic';
+import { FiscalPlugin } from '@run-iq/plugin-fiscal';
+
+const engine = new PPEEngine({
+  plugins: [new FiscalPlugin()],
+  dsls: [new JsonLogicEvaluator()],
+  dryRun: true,
+});
+```
+
+## Expression Format
+
+Rule conditions use JSONLogic syntax in the `condition` field:
+
+```typescript
+const rule = {
+  // ...
+  condition: {
+    dsl: 'jsonlogic',                         // use this evaluator
+    value: { '>': [{ var: 'revenue' }, 0] },  // the JSONLogic expression
+  },
+};
+```
+
+The engine passes `input.data` as the context object to `evaluate()`.
+
+## Context
+
+The evaluator receives `input.data` as its context:
+
+```typescript
+// input.data = { revenue: 5000000, country: 'TG', type: 'enterprise' }
+
+// Inside the evaluator:
+evaluator.evaluate(expression, input.data);
+// { var: 'revenue' } → 5000000
+// { var: 'country' } → 'TG'
+```
+
+## Common Patterns
+
+### Simple comparison
+
+```json
+{ ">": [{ "var": "revenue" }, 0] }
+```
+
+Revenue is greater than 0.
+
+### Equality
+
+```json
+{ "===": [{ "var": "country" }, "TG"] }
+```
+
+Country equals "TG" (strict equality).
+
+### Boolean logic
+
+```json
+{
+  "and": [
+    { ">": [{ "var": "revenue" }, 1000000] },
+    { "===": [{ "var": "type" }, "enterprise"] }
+  ]
+}
+```
+
+Revenue > 1,000,000 AND type is "enterprise".
+
+```json
+{
+  "or": [
+    { "===": [{ "var": "status" }, "active"] },
+    { "===": [{ "var": "status" }, "pending"] }
+  ]
+}
+```
+
+Status is "active" OR "pending".
+
+### Nested access
+
+```json
+{ "var": "employee.type" }
+```
+
+Accesses `input.data.employee.type` using dot notation.
+
+### In-list check
+
+```json
+{ "in": [{ "var": "status" }, ["active", "pending", "trial"]] }
+```
+
+Status is in the given list.
+
+### Numeric ranges
+
+```json
+{ "<=": [1000000, { "var": "revenue" }, 5000000] }
+```
+
+Revenue is between 1,000,000 and 5,000,000 (inclusive).
+
+### Negation
+
+```json
+{ "!": { "===": [{ "var": "exempt" }, true] } }
+```
+
+Not exempt.
+
+## Supported Operations
+
+| Category | Operations |
+|---|---|
+| **Comparison** | `==`, `===`, `!=`, `!==`, `>`, `>=`, `<`, `<=` |
+| **Logic** | `and`, `or`, `!`, `!!`, `if` |
+| **Arithmetic** | `+`, `-`, `*`, `/`, `%`, `min`, `max` |
+| **Data** | `var`, `missing`, `missing_some` |
+| **Array** | `map`, `filter`, `reduce`, `all`, `some`, `none`, `merge`, `in` |
+| **String** | `cat`, `substr`, `in` |
+
+<Callout type="info" title="Full specification">
+  JSONLogic follows the open [jsonlogic.com](http://jsonlogic.com) specification. All standard operations are supported.
+</Callout>
+
+## Timeout
+
+DSL evaluation is subject to a timeout (default: **100ms**, configurable via `timeout.dsl` in engine config):
+
+```typescript
+const engine = new PPEEngine({
+  // ...
+  timeout: { dsl: 200 }, // increase to 200ms
+});
+```
+
+If evaluation exceeds the timeout, the rule is skipped with reason `CONDITION_TIMEOUT`.
+
+## Error Handling
+
+| Scenario | Result |
+|---|---|
+| Valid expression, returns truthy | Rule is **applied** |
+| Valid expression, returns falsy | Rule is **skipped** (`CONDITION_FALSE`) |
+| Invalid expression (throws) | Rule is **skipped** (`DSL_ERROR`) |
+| Evaluation exceeds timeout | Rule is **skipped** (`CONDITION_TIMEOUT`) |
+
+Condition errors never crash the pipeline — the rule is skipped and the trace records what happened.
+
+## Building a Custom DSL Evaluator
+
+You can create evaluators for any expression language by implementing `DSLEvaluator`:
+
+```typescript
+import type { DSLEvaluator } from '@run-iq/core';
+
+export class MyCELEvaluator implements DSLEvaluator {
+  readonly dsl = 'cel' as const;
+  readonly version = '1.0.0';
+
+  evaluate(expression: unknown, context: Record<string, unknown>): boolean {
+    // Parse and evaluate the CEL expression against the context
+    // Return true if the condition is met, false otherwise
+    const expr = expression as string;
+    return evaluateCEL(expr, context);
+  }
+}
+```
+
+Register it alongside other evaluators:
+
+```typescript
+const engine = new PPEEngine({
+  plugins: [new FiscalPlugin()],
+  dsls: [
+    new JsonLogicEvaluator(),
+    new MyCELEvaluator(),
+  ],
+});
+```
+
+Rules can then use either DSL:
+
+```typescript
+// JSONLogic condition
+{ dsl: 'jsonlogic', value: { '>': [{ var: 'revenue' }, 0] } }
+
+// CEL condition
+{ dsl: 'cel', value: 'revenue > 0' }
+```
+
+<Callout type="tip" title="Timeout handling">
+  DSL timeout is managed by the engine's `PluginSandbox` — you don't need to implement timeout logic in your evaluator.
+</Callout>
+
+---
+
+[Back to Documentation](/docs)
