@@ -30,17 +30,20 @@ Peer dependencies: `@run-iq/core`, `@run-iq/plugin-sdk`.
 | `MINIMUM_TAX` | `MAX(base * rate, minimum)` | `CalculationOutput` |
 | `THRESHOLD_BASED` | Tax above/at threshold | `CalculationOutput` |
 | `FIXED_AMOUNT` | Constant amount | `number` |
-| `COMPOSITE` | Combine sub-models (SUM/MAX/MIN) | `CalculationOutput` |
+| `FIXED_AMOUNT` | Returns a static amount, commonly used for stamp duties or fixed fees. |
+| `COMPOSITE` | Aggregates multiple sub-models using `SUM`, `MIN`, `MAX`. |
 
 See [Calculation Models](/docs/concepts/models) for detailed documentation of each model.
 
 ## beforeEvaluate Hook
 
-The fiscal plugin's `beforeEvaluate` hook performs three operations:
+The fiscal plugin's `beforeEvaluate` hook performs five operations:
 
-### 1. Jurisdiction Resolution
-
-`JurisdictionResolver` computes rule priority from `jurisdiction` + `scope`:
+1.  **Meta-rule condition evaluation**: Evaluates DSL conditions for meta-rules against the raw input data.
+2.  **Meta-rule processing**: Passes the rules and condition results through the `<Tag>MetaRuleProcessor</Tag>`, which short-circuits, inhibits, or substitutes regular fiscal rules.
+3.  **Short-circuit handling**: If `META_SHORT_CIRCUIT` matched, immediately returns an empty rules array and a special marker.
+4.  **Jurisdiction precedence**: Resolves priorities for remaining rules based on jurisdiction level and scope.
+5.  **Country filtering**: Pre-filters rules matching the context's country code.
 
 **Base scores:**
 
@@ -70,8 +73,6 @@ Full priority table:
 
 Higher priority rules are evaluated first. A NATIONAL+USER rule (3600) overrides a NATIONAL+GLOBAL rule (3000).
 
-### 2. Country Filtering
-
 If `input.meta.context.country` is provided, only rules matching that country code are kept:
 
 ```typescript
@@ -79,9 +80,17 @@ const country = input.meta.context?.country; // e.g., 'TG'
 const filtered = rules.filter(r => r.country === country);
 ```
 
-### 3. Meta-Rule Processing
+## Meta Models
 
-Meta-models are processed during `beforeEvaluate` to modify the rule set before evaluation. Rules suppressed by meta-rules are skipped with reason `INHIBITED_BY_META_RULE`.
+Meta-models don't perform calculations themselves — they manipulate the execution pipeline during the `beforeEvaluate` phase, altering the set of rules that are eventually evaluated. They are processed sequentially by a deterministic state-free `<Tag>MetaRuleProcessor</Tag>`.
+
+| Model Name | Description |
+|---|---|
+| `META_SHORT_CIRCUIT` | Halts execution immediately. If the rule's condition is met, returns an empty rules list and a specified value. |
+| `META_INHIBITION` | Removes specific rules from the execution pipeline based on IDs, categories, or tags. |
+| `META_SUBSTITUTION` | Dynamically overrides the parameters of existing rules (e.g., swapping out a rate for targeted rules). |
+
+Meta-models are processed during `beforeEvaluate` to modify the returned rules array. Rules removed via `META_INHIBITION` are not passed to the core engine, guaranteeing they are skipped.
 
 ## afterEvaluate Hook
 
@@ -111,24 +120,8 @@ interface FiscalRule extends Rule {
 }
 ```
 
-## Meta-Models
-
-Meta-models don't perform calculations — they modify the rule pipeline during `beforeEvaluate`:
-
-### META_INHIBITION
-
-Suppresses rules that match certain criteria. The inhibition rule's condition determines which rules to suppress.
-
-### META_SUBSTITUTION
-
-Replaces the `params` of matching rules. Useful for jurisdiction-specific overrides (e.g., a regional rate overriding the national default).
-
-### META_SHORT_CIRCUIT
-
-Stops the pipeline entirely if the meta-rule's condition is met. Used for scenarios where no calculation should occur (e.g., tax-exempt entities).
-
-<Callout type="info" title="Meta-rule processing">
-  Meta-rules are processed exclusively in the fiscal plugin's `beforeEvaluate` hook — never in the core engine. The core has no knowledge of meta-rule semantics.
+<Callout type="warning" title="Meta-rules are pre-evaluated">
+  Meta-rules are processed exclusively in the fiscal plugin's `beforeEvaluate` hook — modifying the rule array returned as `BeforeEvaluateResult`. The core engine has no knowledge of meta-rule semantics, it simply executes the rules the plugin hands back to it.
 </Callout>
 
 ## Real-World Examples (CGI Togo 2025)

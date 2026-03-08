@@ -10,11 +10,16 @@ Every plugin implements the `PPEPlugin` interface:
 
 ```typescript
 interface PPEPlugin {
+  // Metadata
   readonly name: string;
   readonly version: string;
+  
+  // Registration
+  readonly models?: CalculationModel[];
+  onInit?(context: PluginContext): void;
 
-  onInit(context: PluginContext): void;
-  beforeEvaluate?(input: EvaluationInput, rules: ReadonlyArray<Rule>): EvaluationInput;
+  // Hooks
+  beforeEvaluate?(input: EvaluationInput, rules: ReadonlyArray<Rule>): BeforeEvaluateResult;
   afterEvaluate?(input: EvaluationInput, result: EvaluationResult): EvaluationResult;
   onError?(error: PPEError, input: EvaluationInput): void;
   teardown?(): void;
@@ -42,27 +47,42 @@ The `@run-iq/plugin-sdk` provides `BasePlugin`, which handles the common boilerp
 ```typescript
 import { BasePlugin } from '@run-iq/plugin-sdk';
 
-abstract class BasePlugin implements PPEPlugin {
-  abstract readonly name: string;
-  abstract readonly version: string;
-  abstract readonly models: CalculationModel[];
+class GeoPlugin extends BasePlugin {
+  readonly name = 'geo-enricher';
+  readonly version = '1.0.0'; // BasePlugin requires version
 
-  onInit(context: PluginContext): void {
-    // Auto-registers all models in the array
-    for (const model of this.models) {
-      context.modelRegistry.register(model);
+  // No models to register for this example
+  // readonly models = [];
+
+  beforeEvaluate(input, rules) {
+    if (input.data.zipCode && !input.data.state) {
+      // Assume lookupState is a helper function
+      const lookupState = (zip: string) => {
+        if (zip.startsWith('90210')) return 'CA';
+        if (zip.startsWith('10001')) return 'NY';
+        return undefined;
+      };
+
+      const state = lookupState(input.data.zipCode);
+      if (state) {
+        return {
+          input: {
+            ...input,
+            data: {
+              ...input.data,
+              state: state
+            }
+          },
+          rules // pass rules through unchanged
+        };
+      }
     }
+    return { input, rules };
   }
-
-  // Default pass-through implementations:
-  beforeEvaluate(input, rules) { return input; }
-  afterEvaluate(input, result) { return result; }
-  onError(error, input) { /* no-op */ }
-  teardown() { /* no-op */ }
 }
 ```
 
-Extending `BasePlugin` means you only need to define `name`, `version`, and `models`. Override hooks only when your domain requires enrichment.
+Extending `BasePlugin` means you only need to define `name`, `version`, and optionally `models`. Override hooks only when your domain requires enrichment.
 
 ## Hook Lifecycle
 

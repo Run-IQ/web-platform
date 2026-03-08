@@ -30,11 +30,11 @@ await tester.assertDeterminism(input, rules, context);
 
 ### `assertImmutability(input, rules)`
 
-Creates deep copies of `input` and `rules` before calling `beforeEvaluate()`. After the call, compares originals against copies. Any mutation is detected.
+Creates deep copies of `input` and `rules` before calling `beforeEvaluate()`. After the call, compares the original passed references against the copies. Any in-place mutation of the objects is detected (plugins must return a *new* `BeforeEvaluateResult` object rather than mutating the input arguments).
 
 ```typescript
 await tester.assertImmutability(input, rules);
-// input and rules unchanged
+// input and rules unchanged in-place
 // Throws: "Immutability violation: beforeEvaluate mutated input"
 ```
 

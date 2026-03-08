@@ -127,23 +127,22 @@ That's it for a basic plugin. `BasePlugin.onInit()` automatically registers all 
 Override `beforeEvaluate` or `afterEvaluate` if your domain requires enrichment:
 
 ```typescript
-import type { EvaluationInput, EvaluationResult, Rule } from '@run-iq/plugin-sdk';
+import type { BeforeEvaluateResult, EvaluationInput, EvaluationResult, Rule } from '@run-iq/core';
 
 export class ExamplePlugin extends BasePlugin {
   // ...
 
   override beforeEvaluate(
     input: EvaluationInput,
-    _rules: ReadonlyArray<Rule>,
-  ): EvaluationInput {
-    // IMMUTABLE — always return new objects
-    return {
-      ...input,
-      data: {
-        ...input.data,
-        processedAt: new Date().toISOString(),
-      },
-    };
+    rules: ReadonlyArray<Rule>
+  ): BeforeEvaluateResult {
+    // 1. Transform input
+    const enrichedInput = { ...input, data: { ...input.data, isEnriched: true } };
+
+    // 2. Filter rules
+    const activeRules = rules.filter(r => !r.tags.includes('disabled'));
+
+    return { input: enrichedInput, rules: activeRules };
   }
 
   override afterEvaluate(

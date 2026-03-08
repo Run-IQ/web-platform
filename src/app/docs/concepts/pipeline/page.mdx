@@ -8,9 +8,9 @@ Every call to `engine.evaluate()` runs through a deterministic 10-step pipeline.
 
 ```
 1. Input Validation       → reject malformed input
-2. Idempotence Check      → return cached result if requestId exists
-3. beforeEvaluate Hooks   → plugin enrichment (immutable chain)
-4. Rule Filtering         → dates, conditions, tags, meta-rules
+2. Idempotence Check      → duplicate prevention
+3. beforeEvaluate Hooks   → plugin enrichment and rule modification (immutable chain)
+4. Rule Filtering         → target date, tags, condition evaluation
 5. Rule Validation        → checksum + params verification
 6. Dominance Resolution   → priority sorting + conflict detection
 7. Execution              → model.calculate() for each matched rule
@@ -48,12 +48,17 @@ This prevents duplicate computation when the same evaluation is requested multip
 
 ## Step 3: beforeEvaluate Hooks
 
-Plugin hooks are called in registration order. Each receives the current input and the full rule set, and returns a **new** `EvaluationInput`:
+Plugin hooks are called in registration order. Each receives the current input and the full rule set, and returns a **new** `BeforeEvaluateResult` containing the (potentially modified) input and rules:
 
 ```typescript
+let currentInput = input;
+let currentRules = rules;
+
 for (const plugin of plugins) {
   if (plugin.beforeEvaluate) {
-    currentInput = plugin.beforeEvaluate(currentInput, rules);
+    const result = plugin.beforeEvaluate(currentInput, currentRules);
+    currentInput = result.input;
+    currentRules = result.rules;
   }
 }
 ```
@@ -89,7 +94,7 @@ DSL timeout: **100ms** default (configurable via `timeout.dsl`).
 If `input.meta.tags` is provided, only rules whose `tags` array intersects with the input tags are kept. Non-matching rules are skipped with reason `TAG_MISMATCH`.
 
 ### Meta-rule filtering
-In plugins like FiscalPlugin, meta-rules (`META_INHIBITION`, `META_SUBSTITUTION`, `META_SHORT_CIRCUIT`) can suppress other rules during `beforeEvaluate`. Suppressed rules are skipped with reason `INHIBITED_BY_META_RULE`.
+In plugins like FiscalPlugin, meta-rules (`META_INHIBITION`, `META_SUBSTITUTION`, `META_SHORT_CIRCUIT`) can dynamically alter the pipeline during `beforeEvaluate`. Specifically, `META_INHIBITION` directly removes suppressed rules from the `rules` array returned by the hook, guaranteeing they won't be evaluated.
 
 ## Step 5: Rule Validation
 

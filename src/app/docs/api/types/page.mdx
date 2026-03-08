@@ -181,12 +181,26 @@ interface DSLEvaluator {
 interface PPEPlugin {
   readonly name: string;
   readonly version: string;
+  readonly models?: CalculationModel[];
 
-  onInit(context: PluginContext): void;
-  beforeEvaluate?(input: EvaluationInput, rules: ReadonlyArray<Rule>): EvaluationInput;
+  onInit?(context: PluginContext): void;
+  beforeEvaluate?(input: EvaluationInput, rules: ReadonlyArray<Rule>): BeforeEvaluateResult;
   afterEvaluate?(input: EvaluationInput, result: EvaluationResult): EvaluationResult;
   onError?(error: PPEError, input: EvaluationInput): void;
   teardown?(): void;
+}
+```
+
+### BeforeEvaluateResult
+
+Returned by a plugin's `beforeEvaluate` hook, allowing it to modify both the input data and the rules array before core execution.
+
+```typescript
+interface BeforeEvaluateResult {
+  /** The potentially modified input */
+  readonly input: EvaluationInput;
+  /** The potentially modified rules array */
+  readonly rules: ReadonlyArray<Rule>;
 }
 ```
 

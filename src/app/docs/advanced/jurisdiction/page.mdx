@@ -97,8 +97,9 @@ Stops the pipeline early if a condition is met:
 ```
 
 <Callout type="info" title="Plugin-level processing">
-  Meta-rules are processed entirely in the plugin's `beforeEvaluate` hook —
-  the core engine never sees them. This preserves the core's domain-agnosticism.
+  Meta-rules are processed entirely in the fiscal plugin's `beforeEvaluate` hook by a stateless `MetaRuleProcessor`.
+  The plugin returns the final, filtered rules array inside the `BeforeEvaluateResult`.
+  The core engine never sees the meta-rules or the logic behind them. This preserves the core's domain-agnosticism.
 </Callout>
 
 ---
