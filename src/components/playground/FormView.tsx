@@ -13,11 +13,14 @@ function deriveFields(inputJson: string): { dataFields: FormField[]; metaFields:
     const parsed = JSON.parse(inputJson);
     const data = parsed?.data;
     const meta = parsed?.meta;
+    const context = meta?.context;
+    
     const dataFields: FormField[] = [];
     const metaFields: FormField[] = [];
 
     if (data && typeof data === 'object') {
       for (const [key, val] of Object.entries(data as Record<string, unknown>)) {
+        if (val !== null && typeof val === 'object') continue;
         dataFields.push({
           key,
           label: key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
@@ -25,8 +28,11 @@ function deriveFields(inputJson: string): { dataFields: FormField[]; metaFields:
         });
       }
     }
+    
     if (meta && typeof meta === 'object') {
       for (const [key, val] of Object.entries(meta as Record<string, unknown>)) {
+        if (key === 'context') continue; // Handled separately below
+        if (val !== null && typeof val === 'object') continue;
         metaFields.push({
           key,
           label: key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
@@ -34,6 +40,19 @@ function deriveFields(inputJson: string): { dataFields: FormField[]; metaFields:
         });
       }
     }
+
+    // Flatten context fields into metaFields with a prefix
+    if (context && typeof context === 'object') {
+      for (const [key, val] of Object.entries(context as Record<string, unknown>)) {
+        if (val !== null && typeof val === 'object') continue;
+        metaFields.push({
+          key: `context.${key}`,
+          label: `Context: ${key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}`,
+          type: typeof val === 'number' ? 'number' : 'text',
+        });
+      }
+    }
+    
     return { dataFields, metaFields };
   } catch {
     return { dataFields: [], metaFields: [] };
@@ -62,14 +81,27 @@ export function FormView({ inputText, onChange }: FormViewProps) {
       const parsed = JSON.parse(inputText);
       const data = parsed?.data ?? {};
       const meta = parsed?.meta ?? {};
+      const context = meta?.context ?? {};
+      
       const dv: Record<string, string> = {};
       for (const [k, v] of Object.entries(data as Record<string, unknown>)) {
+        if (v !== null && typeof v === 'object') continue;
         dv[k] = v === null || v === undefined ? '' : String(v);
       }
+      
       const mv: Record<string, string> = {};
+      // Regular meta
       for (const [k, v] of Object.entries(meta as Record<string, unknown>)) {
+        if (k === 'context') continue;
+        if (v !== null && typeof v === 'object') continue;
         mv[k] = v === null || v === undefined ? '' : String(v);
       }
+      // Context meta
+      for (const [k, v] of Object.entries(context as Record<string, unknown>)) {
+        if (v !== null && typeof v === 'object') continue;
+        mv[`context.${k}`] = v === null || v === undefined ? '' : String(v);
+      }
+      
       setDataValues(dv);
       setMetaValues(mv);
     } catch {
@@ -81,34 +113,40 @@ export function FormView({ inputText, onChange }: FormViewProps) {
     (nextData: Record<string, string>, nextMeta: Record<string, string>) => {
       try {
         const parsed = JSON.parse(inputText);
-        const newData: Record<string, unknown> = {};
+        if (!parsed.data) parsed.data = {};
+        if (!parsed.meta) parsed.meta = {};
+        if (!parsed.meta.context) parsed.meta.context = {};
+
         for (const field of dataFields) {
           const raw = nextData[field.key] ?? '';
           if (field.type === 'number') {
             if (raw === '') {
-              newData[field.key] = 0;
+              parsed.data[field.key] = 0;
             } else {
               const num = Number(raw);
-              newData[field.key] = isNaN(num) ? raw : num;
+              parsed.data[field.key] = isNaN(num) ? raw : num;
             }
           } else {
-            newData[field.key] = raw;
+            parsed.data[field.key] = raw;
           }
         }
-        const newMeta: Record<string, unknown> = {};
-        for (const field of metaFields) {
-          const raw = nextMeta[field.key] ?? '';
-          newMeta[field.key] = raw;
+        
+        for (const [key, raw] of Object.entries(nextMeta)) {
+          if (key.startsWith('context.')) {
+            const contextKey = key.split('.')[1];
+            parsed.meta.context[contextKey] = raw;
+          } else {
+            parsed.meta[key] = raw;
+          }
         }
-        parsed.data = newData;
-        parsed.meta = newMeta;
+        
         selfUpdate.current = true;
         onChange(JSON.stringify(parsed, null, 2));
       } catch {
         // ignore
       }
     },
-    [inputText, dataFields, metaFields, onChange]
+    [inputText, dataFields, onChange]
   );
 
   const handleDataChange = useCallback(

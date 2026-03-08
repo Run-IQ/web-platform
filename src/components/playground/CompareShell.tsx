@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { FormView } from './FormView';
 import { ExplainView } from './ExplainView';
+import { RulesEditor } from './RulesEditor';
 import { DiffIndicator } from './DiffIndicator';
 import { useEngine } from '@/hooks/useEngine';
 import { examples, exampleKeys } from '@/lib/examples';
@@ -70,6 +71,7 @@ export function CompareShell() {
   const [rulesText, setRulesText] = useState(examples[exampleKeys[0]].rules);
   const [inputA, setInputA] = useState(examples[exampleKeys[0]].input);
   const [inputB, setInputB] = useState(examples[exampleKeys[0]].input);
+  const [showRules, setShowRules] = useState(false);
 
   const engineA = useEngine();
   const engineB = useEngine();
@@ -109,6 +111,14 @@ export function CompareShell() {
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
+          <button
+            onClick={() => setShowRules(!showRules)}
+            className={`btn-outline ${showRules ? 'bg-[#f5f5f2]' : ''}`}
+            style={{ padding: '10px 16px' }}
+          >
+            {showRules ? 'Hide Rules' : 'Show Rules'}
+          </button>
+
           <select
             className="styled"
             value={selectedExample}
@@ -160,23 +170,37 @@ export function CompareShell() {
       )}
 
       {/* Side-by-side panels */}
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-px bg-rule min-h-0">
-        <ScenarioPanel
-          label="Scenario A"
-          inputText={inputA}
-          onChange={setInputA}
-          result={engineA.result}
-          error={engineA.error}
-          loading={engineA.loading}
-        />
-        <ScenarioPanel
-          label="Scenario B"
-          inputText={inputB}
-          onChange={setInputB}
-          result={engineB.result}
-          error={engineB.error}
-          loading={engineB.loading}
-        />
+      <div className="flex-1 flex flex-col md:flex-row min-h-0 bg-rule">
+        {showRules && (
+          <div className="w-full md:w-1/3 border-r border-rule bg-paper flex flex-col min-h-0">
+            <div className="px-5 py-3 border-b border-rule bg-[#f5f5f2] flex items-center justify-between shrink-0">
+              <span className="font-mono text-[10px] tracking-wider uppercase text-[#9ca3af]">
+                Rules
+              </span>
+            </div>
+            <div className="flex-1 min-h-0">
+              <RulesEditor value={rulesText} onChange={setRulesText} />
+            </div>
+          </div>
+        )}
+        <div className={`flex-1 grid grid-cols-1 ${showRules ? 'md:grid-cols-1 lg:grid-cols-2' : 'md:grid-cols-2'} gap-px bg-rule min-h-0`}>
+          <ScenarioPanel
+            label="Scenario A"
+            inputText={inputA}
+            onChange={setInputA}
+            result={engineA.result}
+            error={engineA.error}
+            loading={engineA.loading}
+          />
+          <ScenarioPanel
+            label="Scenario B"
+            inputText={inputB}
+            onChange={setInputB}
+            result={engineB.result}
+            error={engineB.error}
+            loading={engineB.loading}
+          />
+        </div>
       </div>
     </div>
   );

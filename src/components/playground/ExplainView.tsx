@@ -180,12 +180,13 @@ interface ExplainViewProps {
 
 export function ExplainView({ result }: ExplainViewProps) {
   const breakdown = result.breakdown ?? [];
+  const skipped = result.skippedRules ?? [];
   const trace = result.trace;
 
-  if (breakdown.length === 0) {
+  if (breakdown.length === 0 && skipped.length === 0) {
     return (
       <div className="p-6 font-mono text-xs text-[#9ca3af]">
-        No breakdown data to explain.
+        No data to explain.
       </div>
     );
   }
@@ -195,6 +196,24 @@ export function ExplainView({ result }: ExplainViewProps) {
       <div className="font-mono text-[9px] text-[#9ca3af] tracking-wider uppercase mb-4">
         Calculation Explanation
       </div>
+
+      {/* Skipped Rules */}
+      {skipped.length > 0 && (
+        <div className="mb-8 p-4 bg-amber-50 border border-amber-100 rounded">
+          <div className="font-mono text-[9px] text-amber-600 tracking-wider uppercase mb-2">
+            Skipped Rules ({skipped.length})
+          </div>
+          <div className="space-y-2">
+            {skipped.map((s, i) => (
+              <div key={i} className="font-mono text-xs flex flex-col sm:flex-row sm:items-center gap-1">
+                <span className="text-amber-700 font-semibold">{s.rule.id}</span>
+                <span className="text-amber-500/70 hidden sm:inline">&middot;</span>
+                <span className="text-amber-600 italic text-[10px]">{s.reason}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {breakdown.map((b, i) => {
         const traceStep = trace?.steps?.[i];

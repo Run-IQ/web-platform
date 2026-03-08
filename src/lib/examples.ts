@@ -7,10 +7,29 @@ export interface Example {
 }
 
 /**
+ * Canonical JSON stringification (sorts keys alphabetically)
+ */
+function canonicalStringify(obj: any): string | undefined {
+  if (obj === undefined) return undefined;
+  if (obj === null || typeof obj !== 'object') {
+    return JSON.stringify(obj);
+  }
+  if (Array.isArray(obj)) {
+    return '[' + obj.map((o) => canonicalStringify(o) ?? 'null').join(',') + ']';
+  }
+  const keys = Object.keys(obj).sort();
+  return '{' + keys.map((k) => {
+    const val = canonicalStringify(obj[k]);
+    if (val === undefined) return null;
+    return `"${k}":${val}`;
+  }).filter((v) => v !== null).join(',') + '}';
+}
+
+/**
  * Utility to generate checksum for examples
  */
 function computeChecksum(params: any): string {
-  return sha256(JSON.stringify(params));
+  return sha256(canonicalStringify(params) ?? 'null');
 }
 
 export const examples: Record<string, Example> = {
@@ -35,7 +54,7 @@ export const examples: Record<string, Example> = {
             ],
           },
           checksum:
-            'b083b9e6e874fc21912d2c4193428a35a2092be713697954ccf1216eeb38045e',
+            '79b11726cd3ce89266119d3d60603c87bc7bba534bc923f846c8e24babcb4b8f',
           effectiveFrom: '2025-01-01',
           effectiveUntil: null,
           jurisdiction: 'NATIONAL',
@@ -121,7 +140,7 @@ export const examples: Record<string, Example> = {
             minimum: 500000,
           },
           checksum:
-            '6726f41e2f9523701085e846481a0055161d4586657c8d0d5c137749bec2a267',
+            'f6f025406e18ab3e65932e98f57f8849adde7f7d82ca295ac711b7fa9bc604fd',
           effectiveFrom: '2025-01-01',
           effectiveUntil: null,
           jurisdiction: 'NATIONAL',
@@ -227,7 +246,7 @@ export const examples: Record<string, Example> = {
             ],
           },
           checksum:
-            'b083b9e6e874fc21912d2c4193428a35a2092be713697954ccf1216eeb38045e',
+            '79b11726cd3ce89266119d3d60603c87bc7bba534bc923f846c8e24babcb4b8f',
           effectiveFrom: '2025-01-01',
           effectiveUntil: null,
           jurisdiction: 'NATIONAL',
@@ -301,7 +320,7 @@ export const examples: Record<string, Example> = {
             minimum: 500000,
           },
           checksum:
-            '6726f41e2f9523701085e846481a0055161d4586657c8d0d5c137749bec2a267',
+            'f6f025406e18ab3e65932e98f57f8849adde7f7d82ca295ac711b7fa9bc604fd',
           effectiveFrom: '2025-01-01',
           effectiveUntil: null,
           jurisdiction: 'NATIONAL',
@@ -322,7 +341,7 @@ export const examples: Record<string, Example> = {
             above_only: false,
           },
           checksum:
-            'c21ddfdd9e86ae2dad6853da122bdf42c00bc0822940aa11e7f291adb2ebb849',
+            '3bcd4f8878fa9e36e47a61bb14916107803259fda7d22603061fd9898bd696c7',
           effectiveFrom: '2025-01-01',
           effectiveUntil: null,
           jurisdiction: 'NATIONAL',
@@ -535,7 +554,7 @@ export const examples: Record<string, Example> = {
             dsl: 'jsonlogic',
             value: { '===': [{ var: 'entity_type' }, 'NGO'] },
           },
-          checksum: '80a7ea144b19979b7f794304a49fba3209f218745d7a98ffb92f4704b7760004',
+          checksum: 'd8fccacc7ab30e72642483dea158fb7238e1799ca301c18f42660a2d608fc1b2',
           effectiveFrom: '2025-01-01',
           effectiveUntil: null,
           jurisdiction: 'NATIONAL',
