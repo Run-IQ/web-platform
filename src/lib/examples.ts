@@ -365,6 +365,203 @@ export const examples: Record<string, Example> = {
       2
     ),
   },
+  zonefranche: {
+    label: 'Meta-Rule: Zone Franche Inhibition',
+    rules: JSON.stringify(
+      [
+        {
+          id: 'rule-tva-standard',
+          model: 'FLAT_RATE',
+          version: 1,
+          priority: 3000,
+          tags: ['tva', 'vat'],
+          params: {
+            base: 'revenue',
+            rate: 0.18,
+          },
+          checksum:
+            'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2',
+          effectiveFrom: '2025-01-01',
+          effectiveUntil: null,
+          jurisdiction: 'NATIONAL',
+          scope: 'GLOBAL',
+          country: 'TG',
+          category: 'TVA',
+        },
+        {
+          id: 'rule-is-standard',
+          model: 'FLAT_RATE',
+          version: 1,
+          priority: 3000,
+          tags: ['is', 'corporate-tax'],
+          params: {
+            base: 'taxable_profit',
+            rate: 0.27,
+          },
+          checksum:
+            'b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3',
+          effectiveFrom: '2025-01-01',
+          effectiveUntil: null,
+          jurisdiction: 'NATIONAL',
+          scope: 'GLOBAL',
+          country: 'TG',
+          category: 'IS',
+        },
+        {
+          id: 'meta-zone-franche-inhibit-tva',
+          model: 'META_INHIBITION',
+          version: 1,
+          priority: 9000,
+          tags: ['meta', 'zone-franche'],
+          params: {
+            targetCategories: ['TVA'],
+          },
+          condition: {
+            dsl: 'jsonlogic',
+            value: { '===': [{ var: 'zone' }, 'zone_franche'] },
+          },
+          checksum:
+            'c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4',
+          effectiveFrom: '2025-01-01',
+          effectiveUntil: null,
+          jurisdiction: 'NATIONAL',
+          scope: 'GLOBAL',
+          country: 'TG',
+          category: 'META',
+        },
+      ],
+      null,
+      2
+    ),
+    input: JSON.stringify(
+      {
+        requestId: 'playground-zf-001',
+        data: {
+          revenue: 10000000,
+          taxable_profit: 3000000,
+          zone: 'zone_franche',
+          country: 'TG',
+        },
+        meta: {
+          tenantId: 'playground',
+          scenario: 'zone-franche-inhibition',
+        },
+      },
+      null,
+      2
+    ),
+  },
+  ngoExempt: {
+    label: 'Meta-Rule: NGO Total Exemption',
+    rules: JSON.stringify(
+      [
+        {
+          id: 'rule-tva-general',
+          model: 'FLAT_RATE',
+          version: 1,
+          priority: 3000,
+          tags: ['tva'],
+          params: {
+            base: 'revenue',
+            rate: 0.18,
+          },
+          checksum:
+            'd4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5',
+          effectiveFrom: '2025-01-01',
+          effectiveUntil: null,
+          jurisdiction: 'NATIONAL',
+          scope: 'GLOBAL',
+          country: 'TG',
+          category: 'TVA',
+        },
+        {
+          id: 'rule-is-general',
+          model: 'FLAT_RATE',
+          version: 1,
+          priority: 3000,
+          tags: ['is'],
+          params: {
+            base: 'taxable_profit',
+            rate: 0.27,
+          },
+          checksum:
+            'e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6',
+          effectiveFrom: '2025-01-01',
+          effectiveUntil: null,
+          jurisdiction: 'NATIONAL',
+          scope: 'GLOBAL',
+          country: 'TG',
+          category: 'IS',
+        },
+        {
+          id: 'rule-irpp-general',
+          model: 'PROGRESSIVE_BRACKET',
+          version: 1,
+          priority: 3000,
+          tags: ['irpp'],
+          params: {
+            base: 'net_taxable_income',
+            brackets: [
+              { from: 0, to: 900000, rate: 0 },
+              { from: 900000, to: 1800000, rate: 0.1 },
+              { from: 1800000, to: null, rate: 0.15 },
+            ],
+          },
+          checksum:
+            'f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1',
+          effectiveFrom: '2025-01-01',
+          effectiveUntil: null,
+          jurisdiction: 'NATIONAL',
+          scope: 'GLOBAL',
+          country: 'TG',
+          category: 'IRPP',
+        },
+        {
+          id: 'meta-ngo-short-circuit',
+          model: 'META_SHORT_CIRCUIT',
+          version: 1,
+          priority: 9999,
+          tags: ['meta', 'ngo-exempt'],
+          params: {
+            value: 0,
+            reason: 'NGO/non-profit entities are exempt from all taxes under Article 145 CGI',
+          },
+          condition: {
+            dsl: 'jsonlogic',
+            value: { '===': [{ var: 'entity_type' }, 'NGO'] },
+          },
+          checksum:
+            'a1a1b2b2c3c3d4d4e5e5f6f6a1a1b2b2c3c3d4d4e5e5f6f6a1a1b2b2c3c3d4d4',
+          effectiveFrom: '2025-01-01',
+          effectiveUntil: null,
+          jurisdiction: 'NATIONAL',
+          scope: 'GLOBAL',
+          country: 'TG',
+          category: 'META',
+        },
+      ],
+      null,
+      2
+    ),
+    input: JSON.stringify(
+      {
+        requestId: 'playground-ngo-001',
+        data: {
+          revenue: 50000000,
+          taxable_profit: 8000000,
+          net_taxable_income: 5000000,
+          entity_type: 'NGO',
+          country: 'TG',
+        },
+        meta: {
+          tenantId: 'playground',
+          scenario: 'ngo-total-exemption',
+        },
+      },
+      null,
+      2
+    ),
+  },
 };
 
 export const exampleKeys = Object.keys(examples) as (keyof typeof examples)[];
