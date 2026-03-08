@@ -1,0 +1,139 @@
+import { Callout } from '@/components/docs/Callout'
+
+# MCP Server
+
+`@run-iq/mcp-server` exposes the PPE engine to Large Language Models (Claude, GPT, Gemini) via the [Model Context Protocol](https://modelcontextprotocol.io). It transforms Run-IQ into an **AI-powered fiscal assistant** — LLMs can generate valid rules, evaluate them, and explain results without writing code.
+
+## Architecture
+
+```
+LLM (Claude, GPT, etc.)
+  ↕ stdio (MCP protocol)
+@run-iq/mcp-server
+  ├── Tools (8)      → create, evaluate, validate, simulate, ...
+  ├── Resources (3)  → models, plugins, schemas
+  ├── Prompts (2)    → analyze-text, domain-expert
+  └── PPEEngine (dry-run mode)
+        ├── Plugins (loaded dynamically or defaults)
+        └── DSLs (JsonLogic, etc.)
+```
+
+## Installation
+
+```bash
+npm install @run-iq/mcp-server
+```
+
+## Usage with Claude Desktop
+
+Add to your Claude Desktop configuration (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "run-iq": {
+      "command": "npx",
+      "args": ["-y", "@run-iq/mcp-server"]
+    }
+  }
+}
+```
+
+For dynamic plugin loading from a directory:
+
+```json
+{
+  "mcpServers": {
+    "run-iq": {
+      "command": "npx",
+      "args": ["-y", "@run-iq/mcp-server", "--plugins-dir", "/path/to/plugins"]
+    }
+  }
+}
+```
+
+## Default Configuration
+
+When started without `--plugins-dir`, the server loads:
+- **FiscalPlugin** — 6 tax calculation models + 3 meta-models
+- **JsonLogicEvaluator** — standard JSONLogic condition evaluator
+- **fiscalDescriptor** — plugin metadata for schema-aware rule generation
+
+The engine runs in **dry-run mode** with `onChecksumMismatch: 'skip'` and `onConflict: 'first'` — optimized for AI experimentation.
+
+<Callout type="info" title="Why fiscal by default?">
+  The fiscal plugin ships as a default so the MCP server works out-of-the-box
+  for the most common use case. With `--plugins-dir`, you can load any domain
+  (payroll, insurance, etc.) without recompiling.
+</Callout>
+
+## Tools (8)
+
+| Tool | Purpose |
+|---|---|
+| `create_rule` | Generate a valid Rule JSON with auto-computed SHA-256 checksum |
+| `create_checksum` | Compute SHA-256 checksum for rule params |
+| `evaluate` | Evaluate rules against input data (dry-run) |
+| `simulate` | Compare N scenarios using the same rules side-by-side |
+| `validate` | Validate rule structure and params against registered models |
+| `list_models` | List all registered calculation models with descriptions |
+| `inspect_rule` | Analyze a rule's params against its model schema |
+| `explain` | Generate human-readable explanation of an evaluation result |
+
+See [MCP Tools Reference](/docs/mcp/tools) for detailed input/output schemas.
+
+## Resources (3)
+
+| Resource | URI | Description |
+|---|---|---|
+| Models Catalog | `models://catalog` | All registered calculation models with params schema |
+| Plugins Loaded | `plugins://loaded` | Currently loaded plugins, DSLs, and versions |
+| Rule Schema | `rule://schema` | JSON schema for valid rule objects (respects loaded plugins) |
+
+## Prompts (2)
+
+| Prompt | Purpose |
+|---|---|
+| `analyze-text` | Analyze legislative text and extract calculation rules |
+| `domain-expert` | Act as a domain expert for the loaded plugin domains |
+
+## Dynamic Plugin Loading
+
+The `--plugins-dir` flag enables runtime discovery of plugin bundles:
+
+```bash
+run-iq-mcp --plugins-dir ./my-plugins/
+```
+
+The loader scans the directory for packages that export a `PluginBundle`:
+
+```typescript
+// my-plugins/insurance/index.ts
+export const bundle: PluginBundle = {
+  plugin: new InsurancePlugin(),
+  descriptor: insuranceDescriptor,
+  dsls: [new InsuranceDSL()],
+};
+```
+
+See [MCP Plugin Loading](/docs/mcp/plugin-loading) for the full discovery mechanism.
+
+## Engine Context
+
+The MCP server creates a shared engine context at startup:
+
+```typescript
+interface EngineContext {
+  engine: PPEEngine;
+  models: ReadonlyMap<string, CalculationModel>;
+  descriptorRegistry: DescriptorRegistry;
+  plugins: readonly PPEPlugin[];
+  dsls: readonly DSLEvaluator[];
+}
+```
+
+All tools, resources, and prompts share this context. The `descriptorRegistry` provides schema-aware metadata that enables the LLM to generate domain-correct rules with the right extension fields.
+
+---
+
+Next: [MCP Tools Reference](/docs/mcp/tools)
