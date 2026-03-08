@@ -1,0 +1,102 @@
+import { Callout } from '@/components/docs/Callout'
+
+# MCP Dynamic Plugin Loading
+
+The MCP server can load plugin bundles at runtime from a directory, enabling domain extensibility without recompiling. When `--plugins-dir` is specified, the server discovers and loads all compatible bundles from the given directory.
+
+## How It Works
+
+```
+npx @run-iq/mcp-server --plugins-dir ./my-plugins/
+```
+
+1. **Scan** — Reads the directory for `.js` and `.mjs` files
+2. **Import** — Dynamically imports each file
+3. **Validate** — Checks for `plugin` and `descriptor` properties (the `PluginBundle` shape)
+4. **Register** — Adds valid bundles to the engine, replacing the default FiscalPlugin
+
+If no `--plugins-dir` is provided, the server falls back to the built-in FiscalPlugin + JsonLogicEvaluator.
+
+## Creating a Loadable Bundle
+
+A bundle file must export an object matching the `PluginBundle` interface:
+
+```typescript
+// my-plugins/insurance.js
+import { InsurancePlugin } from './InsurancePlugin.js';
+import { insuranceDescriptor } from './descriptor.js';
+
+export default {
+  plugin: new InsurancePlugin(),
+  descriptor: insuranceDescriptor,
+  // Optional: include domain-specific DSL evaluators
+  // dsls: [new CustomDSL()],
+};
+```
+
+### PluginBundle Interface
+
+```typescript
+interface PluginBundle {
+  plugin: PPEPlugin;
+  descriptor: PluginDescriptor;
+  dsls?: DSLEvaluator[];
+}
+```
+
+## DescriptorRegistry
+
+The `DescriptorRegistry` aggregates metadata from all loaded plugin descriptors:
+
+```typescript
+class DescriptorRegistry {
+  register(descriptor: PluginDescriptor): void;
+  getAll(): readonly PluginDescriptor[];
+  getRuleExtensions(): readonly RuleFieldDescriptor[];
+  getInputFields(): readonly InputFieldDescriptor[];
+  getExamples(): readonly RuleExample[];
+  isEmpty(): boolean;
+}
+```
+
+**Key behaviors:**
+- `getRuleExtensions()` — Flattens all plugin rule extension fields into a single list. Used by `create_rule` schema and `schema://rules` resource.
+- `getInputFields()` — Deduplicates input fields across plugins (first-win by name)
+- `getExamples()` — Aggregates all rule examples from all plugins
+
+## Schema Adaptation
+
+When plugins are loaded, the MCP tools and resources automatically adapt:
+
+| Component | Adaptation |
+|---|---|
+| `create_rule` tool | Dynamic schema includes plugin extension fields |
+| `validate_rules` tool | Validates plugin-specific fields |
+| `inspect_rule` tool | Checks extension field correctness |
+| `schema://rules` resource | Includes extension fields, models, input fields, examples |
+| `analyze-text` prompt | Includes domain guidelines and available fields |
+| `domain-expert` prompt | References loaded domain expertise |
+
+<Callout type="info" title="No recompilation needed">
+  Adding a new domain (insurance, payroll, customs) only requires dropping a `.js` bundle
+  file into the plugins directory. The MCP server discovers and integrates it automatically.
+</Callout>
+
+## Example: Multi-Domain Setup
+
+```bash
+# Directory structure
+my-plugins/
+├── fiscal.js        # @run-iq/plugin-fiscal bundle
+├── payroll.js       # @run-iq/plugin-payroll bundle
+└── insurance.mjs    # Custom insurance bundle
+
+# Start MCP server with all three domains
+npx @run-iq/mcp-server --plugins-dir ./my-plugins/
+```
+
+The LLM now has access to all three domains' models, rule extensions, and examples.
+
+---
+
+Next: [SchemaValidator](/docs/sdk/schema-validator)
