@@ -1,7 +1,16 @@
+import { sha256 } from 'js-sha256';
+
 export interface Example {
   label: string;
   rules: string;
   input: string;
+}
+
+/**
+ * Utility to generate checksum for examples
+ */
+function computeChecksum(params: any): string {
+  return sha256(JSON.stringify(params));
 }
 
 export const examples: Record<string, Example> = {
@@ -25,7 +34,8 @@ export const examples: Record<string, Example> = {
               { from: 3600000, to: null, rate: 0.35 },
             ],
           },
-          checksum: 'b083b9e6e874fc21912d2c4193428a35a2092be713697954ccf1216eeb38045e',
+          checksum:
+            'b083b9e6e874fc21912d2c4193428a35a2092be713697954ccf1216eeb38045e',
           effectiveFrom: '2025-01-01',
           effectiveUntil: null,
           jurisdiction: 'NATIONAL',
@@ -67,7 +77,8 @@ export const examples: Record<string, Example> = {
             base: 'taxable_amount',
             rate: 0.18,
           },
-          checksum: '6d29a4417d923e9d7eef601a308550b792e3d44012729ec929366c0ee2606fed',
+          checksum:
+            '6d29a4417d923e9d7eef601a308550b792e3d44012729ec929366c0ee2606fed',
           effectiveFrom: '2025-01-01',
           effectiveUntil: null,
           jurisdiction: 'NATIONAL',
@@ -109,7 +120,8 @@ export const examples: Record<string, Example> = {
             rate: 0.01,
             minimum: 500000,
           },
-          checksum: '6726f41e2f9523701085e846481a0055161d4586657c8d0d5c137749bec2a267',
+          checksum:
+            '6726f41e2f9523701085e846481a0055161d4586657c8d0d5c137749bec2a267',
           effectiveFrom: '2025-01-01',
           effectiveUntil: null,
           jurisdiction: 'NATIONAL',
@@ -166,7 +178,8 @@ export const examples: Record<string, Example> = {
               },
             ],
           },
-          checksum: 'd1accb8d5b230de914f59a16b11dd426395202a0f12ee4569a726a0ec6d5cd88',
+          checksum:
+            'd1accb8d5b230de914f59a16b11dd426395202a0f12ee4569a726a0ec6d5cd88',
           effectiveFrom: '2025-01-01',
           effectiveUntil: null,
           jurisdiction: 'NATIONAL',
@@ -213,7 +226,8 @@ export const examples: Record<string, Example> = {
               { from: 3600000, to: null, rate: 0.35 },
             ],
           },
-          checksum: 'b083b9e6e874fc21912d2c4193428a35a2092be713697954ccf1216eeb38045e',
+          checksum:
+            'b083b9e6e874fc21912d2c4193428a35a2092be713697954ccf1216eeb38045e',
           effectiveFrom: '2025-01-01',
           effectiveUntil: null,
           jurisdiction: 'NATIONAL',
@@ -247,7 +261,8 @@ export const examples: Record<string, Example> = {
               },
             ],
           },
-          checksum: 'd1accb8d5b230de914f59a16b11dd426395202a0f12ee4569a726a0ec6d5cd88',
+          checksum:
+            'd1accb8d5b230de914f59a16b11dd426395202a0f12ee4569a726a0ec6d5cd88',
           effectiveFrom: '2025-01-01',
           effectiveUntil: null,
           jurisdiction: 'NATIONAL',
@@ -265,7 +280,8 @@ export const examples: Record<string, Example> = {
             base: 'taxable_amount',
             rate: 0.18,
           },
-          checksum: '6d29a4417d923e9d7eef601a308550b792e3d44012729ec929366c0ee2606fed',
+          checksum:
+            '6d29a4417d923e9d7eef601a308550b792e3d44012729ec929366c0ee2606fed',
           effectiveFrom: '2025-01-01',
           effectiveUntil: null,
           jurisdiction: 'NATIONAL',
@@ -284,7 +300,8 @@ export const examples: Record<string, Example> = {
             rate: 0.01,
             minimum: 500000,
           },
-          checksum: '6726f41e2f9523701085e846481a0055161d4586657c8d0d5c137749bec2a267',
+          checksum:
+            '6726f41e2f9523701085e846481a0055161d4586657c8d0d5c137749bec2a267',
           effectiveFrom: '2025-01-01',
           effectiveUntil: null,
           jurisdiction: 'NATIONAL',
@@ -304,7 +321,8 @@ export const examples: Record<string, Example> = {
             rate: 0.0075,
             above_only: false,
           },
-          checksum: 'c21ddfdd9e86ae2dad6853da122bdf42c00bc0822940aa11e7f291adb2ebb849',
+          checksum:
+            'c21ddfdd9e86ae2dad6853da122bdf42c00bc0822940aa11e7f291adb2ebb849',
           effectiveFrom: '2025-01-01',
           effectiveUntil: null,
           jurisdiction: 'NATIONAL',
@@ -322,7 +340,8 @@ export const examples: Record<string, Example> = {
             amount: 5000,
             currency: 'XOF',
           },
-          checksum: '57339395da843742b4d6a27916774a853391f45d4a052069dad858e81e656b1a',
+          checksum:
+            '57339395da843742b4d6a27916774a853391f45d4a052069dad858e81e656b1a',
           effectiveFrom: '2025-01-01',
           effectiveUntil: null,
           jurisdiction: 'NATIONAL',
@@ -547,6 +566,118 @@ export const examples: Record<string, Example> = {
       2
     ),
   },
+  gigafactory: {
+    label: 'Boss: Gigafactory Multi-Exemption',
+    rules: JSON.stringify(
+      [
+        {
+          id: 'meta-zf-inhibit',
+          model: 'META_INHIBITION',
+          version: 1,
+          priority: 9000,
+          params: { targetCategories: ['TVA', 'IS_STD'] },
+          condition: { dsl: 'jsonlogic', value: { "===": [{ var: "zone" }, "zone_franche"] } },
+          checksum: computeChecksum({ targetCategories: ['TVA', 'IS_STD'] }),
+          effectiveFrom: '2025-01-01',
+          effectiveUntil: null, jurisdiction: 'NATIONAL', scope: 'GLOBAL', country: 'TG', category: 'META'
+        },
+        {
+          id: 'tva-standard',
+          model: 'FLAT_RATE',
+          version: 1,
+          priority: 3000,
+          params: { base: 'revenue', rate: 0.18 },
+          checksum: computeChecksum({ base: 'revenue', rate: 0.18 }),
+          effectiveFrom: '2025-01-01',
+          effectiveUntil: null, jurisdiction: 'NATIONAL', scope: 'GLOBAL', country: 'TG', category: 'TVA'
+        },
+        {
+          id: 'is-standard',
+          model: 'FLAT_RATE',
+          version: 1,
+          priority: 3000,
+          params: { base: 'profit', rate: 0.27 },
+          checksum: computeChecksum({ base: 'profit', rate: 0.27 }),
+          effectiveFrom: '2025-01-01',
+          effectiveUntil: null, jurisdiction: 'NATIONAL', scope: 'GLOBAL', country: 'TG', category: 'IS_STD'
+        },
+        {
+          id: 'is-special-zf',
+          model: 'FLAT_RATE',
+          version: 1,
+          priority: 3000,
+          params: { base: 'profit', rate: 0.05 },
+          checksum: computeChecksum({ base: 'profit', rate: 0.05 }),
+          effectiveFrom: '2025-01-01',
+          effectiveUntil: null, jurisdiction: 'NATIONAL', scope: 'GLOBAL', country: 'TG', category: 'IS_SPECIAL'
+        },
+        {
+          id: 'irpp-exec',
+          model: 'PROGRESSIVE_BRACKET',
+          version: 1,
+          priority: 3000,
+          params: {
+            base: 'taxable_salary',
+            brackets: [
+              { from: 0, to: 1000000, rate: 0.10 },
+              { from: 1000000, to: null, rate: 0.30 }
+            ]
+          },
+          checksum: computeChecksum({
+            base: 'taxable_salary',
+            brackets: [
+              { from: 0, to: 1000000, rate: 0.10 },
+              { from: 1000000, to: null, rate: 0.30 }
+            ]
+          }),
+          effectiveFrom: '2025-01-01',
+          effectiveUntil: null, jurisdiction: 'NATIONAL', scope: 'GLOBAL', country: 'TG', category: 'IRPP'
+        },
+        {
+          id: 'cnss-total',
+          model: 'COMPOSITE',
+          version: 1,
+          priority: 3000,
+          params: {
+            aggregation: 'SUM',
+            steps: [
+              { model: 'FLAT_RATE', params: { base: 'gross_salary', rate: 0.04 } },
+              { model: 'FLAT_RATE', params: { base: 'gross_salary', rate: 0.18 } }
+            ]
+          },
+          checksum: computeChecksum({
+            aggregation: 'SUM',
+            steps: [
+              { model: 'FLAT_RATE', params: { base: 'gross_salary', rate: 0.04 } },
+              { model: 'FLAT_RATE', params: { base: 'gross_salary', rate: 0.18 } }
+            ]
+          }),
+          effectiveFrom: '2025-01-01',
+          effectiveUntil: null, jurisdiction: 'NATIONAL', scope: 'GLOBAL', country: 'TG', category: 'CNSS'
+        }
+      ],
+      null,
+      2
+    ),
+    input: JSON.stringify(
+      {
+        requestId: 'boss-001',
+        data: {
+          revenue: 500000000,
+          profit: 100000000,
+          gross_salary: 20000000,
+          taxable_salary: 18000000,
+          zone: 'zone_franche'
+        },
+        meta: {
+          tenantId: 'gigafactory',
+          context: { country: 'TG' }
+        },
+      },
+      null,
+      2
+    ),
+  }
 };
 
 export const exampleKeys = Object.keys(examples) as (keyof typeof examples)[];
