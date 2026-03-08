@@ -1,0 +1,106 @@
+import { Callout } from '@/components/docs/Callout'
+
+# Jurisdiction Resolution
+
+The fiscal plugin's `beforeEvaluate` hook automatically resolves rule priority based on jurisdiction and scope. This implements the legal principle that **more specific rules take precedence** over general ones.
+
+## Priority Matrix
+
+Each rule carries two fiscal fields: `jurisdiction` and `scope`. The priority is computed as:
+
+```
+priority = JurisdictionBase + ScopeMultiplier
+```
+
+### Jurisdiction Base Values
+
+| Jurisdiction | Base | Rationale |
+|---|---|---|
+| `NATIONAL` | 3000 | Central government rules |
+| `REGIONAL` | 2000 | Regional/state rules |
+| `MUNICIPAL` | 1000 | Local/city rules |
+
+### Scope Multiplier
+
+| Scope | Multiplier | Rationale |
+|---|---|---|
+| `GLOBAL` | × 1.0 | Applies to everyone |
+| `ORGANIZATION` | × 1.1 | Company-specific override |
+| `USER` | × 1.2 | Individual-specific override |
+
+### Full Priority Table
+
+| Jurisdiction | Scope | Priority | Example |
+|---|---|---|---|
+| NATIONAL | USER | 3600 | Individual exemption from national tax |
+| NATIONAL | ORGANIZATION | 3300 | Corporate tax incentive |
+| NATIONAL | GLOBAL | 3000 | Standard national IRPP |
+| REGIONAL | USER | 2400 | Regional individual benefit |
+| REGIONAL | ORGANIZATION | 2200 | Regional corporate rate |
+| REGIONAL | GLOBAL | 2000 | Regional standard tax |
+| MUNICIPAL | USER | 1200 | Municipal individual exemption |
+| MUNICIPAL | ORGANIZATION | 1100 | Municipal business tax |
+| MUNICIPAL | GLOBAL | 1000 | Municipal standard rate |
+
+Higher priority rules are evaluated first. When combined with `onConflict: 'first'`, the most specific rule wins.
+
+## Country Filtering
+
+The fiscal plugin's `beforeEvaluate` hook also filters rules by country:
+
+```
+If input.meta.context.country exists AND rule.country exists:
+  → Skip rule if they don't match
+```
+
+This enables multi-country rule sets where only relevant rules are evaluated.
+
+## Meta-Rules
+
+The fiscal plugin supports three meta-model types processed in `beforeEvaluate`:
+
+### META_INHIBITION
+
+Suppresses matching rules. A meta-inhibition rule removes other rules from evaluation based on conditions.
+
+```json
+{
+  "model": "META_INHIBITION",
+  "params": { "targetTags": ["luxury-tax"] },
+  "condition": { "dsl": "jsonlogic", "value": { "<": [{ "var": "revenue" }, 1000000] } }
+}
+```
+
+When the condition is true, all rules tagged `luxury-tax` are removed. Skip reason: `INHIBITED_BY_META_RULE`.
+
+### META_SUBSTITUTION
+
+Replaces the params of matching rules with alternative params:
+
+```json
+{
+  "model": "META_SUBSTITUTION",
+  "params": { "targetModel": "FLAT_RATE", "newParams": { "rate": 0.10, "base": "revenue" } }
+}
+```
+
+### META_SHORT_CIRCUIT
+
+Stops the pipeline early if a condition is met:
+
+```json
+{
+  "model": "META_SHORT_CIRCUIT",
+  "params": { "value": 0, "reason": "Exempt organization" },
+  "condition": { "dsl": "jsonlogic", "value": { "===": [{ "var": "type" }, "NGO"] } }
+}
+```
+
+<Callout type="info" title="Plugin-level processing">
+  Meta-rules are processed entirely in the plugin's `beforeEvaluate` hook —
+  the core engine never sees them. This preserves the core's domain-agnosticism.
+</Callout>
+
+---
+
+Next: [Building a DSL Evaluator](/docs/guides/custom-dsl)
