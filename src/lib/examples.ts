@@ -19,11 +19,18 @@ function canonicalStringify(obj: unknown): string | undefined {
   }
   const record = obj as Record<string, unknown>;
   const keys = Object.keys(record).sort();
-  return '{' + keys.map((k) => {
-    const val = canonicalStringify(record[k]);
-    if (val === undefined) return null;
-    return `"${k}":${val}`;
-  }).filter((v) => v !== null).join(',') + '}';
+  return (
+    '{' +
+    keys
+      .map((k) => {
+        const val = canonicalStringify(record[k]);
+        if (val === undefined) return null;
+        return `"${k}":${val}`;
+      })
+      .filter((v): v is string => v !== null)
+      .join(',') +
+    '}'
+  );
 }
 
 /**

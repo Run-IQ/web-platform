@@ -93,7 +93,11 @@ Meta-models don't perform calculations themselves — they manipulate the execut
 |---|---|
 | `META_SHORT_CIRCUIT` | Halts execution immediately. If the rule's condition is met, returns an empty rules list and a specified value. |
 | `META_INHIBITION` | Removes specific rules from the execution pipeline based on IDs, categories, or tags. |
-| `META_SUBSTITUTION` | Dynamically overrides the parameters of existing rules (e.g., swapping out a rate for targeted rules). |
+| `META_SUBSTITUTION` | Dynamically overrides the parameters of existing rules using **Deep Merge**. |
+
+<Callout type="tip" title="Smart Substitution">
+  `META_SUBSTITUTION` does not replace the entire `params` object. It performes a **Deep Merge** between the original parameters and `newParams`. This allows you to override specific fields (like changing a `base` or a single `rate`) without re-declaring complex structures like brackets or composite steps.
+</Callout>
 
 Meta-models are processed during `beforeEvaluate` to modify the returned rules array. Rules removed via `META_INHIBITION` are not passed to the core engine, guaranteeing they are skipped.
 

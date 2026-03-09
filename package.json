@@ -1,6 +1,6 @@
 {
   "name": "@run-iq/web-platform",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -13,9 +13,9 @@
     "@mdx-js/react": "^3.1.1",
     "@monaco-editor/react": "^4.7.0",
     "@next/mdx": "^16.1.6",
-    "@run-iq/core": "^0.2.4",
+    "@run-iq/core": "^0.2.5",
     "@run-iq/dsl-jsonlogic": "^0.1.2",
-    "@run-iq/plugin-fiscal": "^0.2.13",
+    "@run-iq/plugin-fiscal": "^0.3.0",
     "@run-iq/plugin-sdk": "^0.2.4",
     "js-sha256": "^0.11.0",
     "next": "^15.2.0",
