@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Tag } from '@/components/ui/Tag';
+import pkg from '../../../package.json';
 
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -14,7 +15,7 @@ export function Header() {
           <span className="font-serif text-[22px] font-bold tracking-tight">
             RUN-IQ
           </span>
-          <Tag color="#6b7280">v0.3.2-alpha</Tag>
+          <Tag color="#6b7280">v{pkg.version}</Tag>
         </div>
 
         {/* Mobile menu button */}
