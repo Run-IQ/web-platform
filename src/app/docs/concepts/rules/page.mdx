@@ -133,15 +133,19 @@ When multiple rules match, priority determines evaluation order. Higher priority
 
 Rules are only considered if the evaluation date falls within their `[effectiveFrom, effectiveUntil]` window. Set `effectiveUntil` to `null` for rules with no expiry. This enables versioning — you can have two versions of the same tax rule with different effective periods, and the engine will automatically select the correct one.
 
-### `checksum` — Integrity Verification
+### `checksum` — Total Identity Security
 
-The checksum is a SHA-256 hash of the parameters. It's computed once when the rule is created and stored alongside it. 
+The checksum is a SHA-256 hash that acts as a tamper-evident seal for the rule's entire logic.
 
-<Callout type="info" title="Canonical Hashing">
-  The engine uses **canonical serialization**: all keys in the `params` object are recursively sorted alphabetically before hashing. This makes the checksum robust against different property orders in the JSON input.
+<Callout type="info" title="Total Identity Security">
+  Unlike simple data hashes, a Run-IQ checksum covers the rule's **complete identity**: the `model`, the `params`, the `condition`, and the `priority`. Any change to how the rule decides or calculates will invalidate the checksum.
 </Callout>
 
-At evaluation time, the engine re-computes the hash and compares — any mismatch indicates the rule's parameters were modified after approval.
+<Callout type="info" title="Canonical Hashing">
+  The engine uses **canonical serialization**: all keys in the hashed object are recursively sorted alphabetically before hashing. This makes the checksum robust against different property orders in the JSON input.
+</Callout>
+
+At evaluation time, the engine re-computes this identity hash from the provided rules and compares it against the stored `checksum`. If they don't match, the rule is skipped (or an error is thrown in strict mode).
 
 ### `tags` — Filtering Labels
 

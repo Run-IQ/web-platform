@@ -20,19 +20,23 @@ Run-IQ implements defense-in-depth security across multiple layers. Every evalua
 
 ### Rule-Level Checksums
 
-Each rule carries a `checksum` field: `SHA-256(JSON.stringify(params))`. The engine recomputes this at evaluation time and compares:
+Each rule carries a `checksum` field. To ensure **Total Identity Security**, the hash covers the rule's entire logic:
 
-```
-Host creates rule → computes SHA-256(params) → stores as rule.checksum
-Engine evaluates → recomputes SHA-256(params) → compares checksums
-  Match → rule proceeds
-  Mismatch → CHECKSUM_MISMATCH (skip or throw based on onChecksumMismatch)
+```typescript
+// The engine computes the hash over these critical fields:
+const identity = {
+  model: rule.model,
+  params: rule.params,
+  condition: rule.condition,
+  priority: rule.priority
+};
 ```
 
-This detects:
-- Rule params tampered after creation
-- Corruption during transit or storage
-- Unauthorized modifications
+The engine uses **canonical serialization** (keys are recursively sorted alphabetically) before computing the SHA-256 hash. This makes the system robust against property reordering while detecting any change to:
+- Rule logic (Model)
+- Rule numbers (Params)
+- Application logic (Condition)
+- Evaluation order (Priority)
 
 ### Snapshot-Level Checksums
 
@@ -108,7 +112,16 @@ In production, `strict: true` ensures every evaluation has a verifiable audit tr
 
 ## Input Sanitization
 
-`InputSanitizer` validates every evaluation input before processing:
+Run-IQ employs a two-stage sanitization process:
+
+### 1. Global Input Sanitizer (MCP Level)
+The MCP server includes a recursive sanitizer that cleans all inputs before they reach the engine. It automatically handles common LLM formatting issues:
+- **Unwrapping**: Removes redundant double-quotes (e.g., `""value""` → `"value"`)
+- **Key Normalization**: Strips extra quotes from object keys.
+- **Recursive Cleaning**: Deep cleans nested structures like `params` and `meta.context`.
+
+### 2. Structural Validation (Engine Level)
+`InputSanitizer` validates every evaluation input against its strict schema:
 
 - `requestId` must be a non-empty string
 - `data` must be a non-null object
