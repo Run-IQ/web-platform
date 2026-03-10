@@ -60,7 +60,7 @@ interface DemoResult {
 
 const RESULTS: Record<string, DemoResult> = {
   fiscal: {
-    value: '147000',
+    value: '180000',
     breakdown: [
       { label: 'Tranche 0\u2013900k (0%)', contribution: '0.00' },
       { label: 'Tranche 900k\u20131.8M (10%)', contribution: '90000.00' },

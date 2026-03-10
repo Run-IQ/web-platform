@@ -216,7 +216,7 @@ export function ExplainView({ result }: ExplainViewProps) {
       )}
 
       {breakdown.map((b, i) => {
-        const traceStep = trace?.steps?.[i];
+        const traceStep = trace?.steps?.find(s => s.ruleId === b.ruleId);
         return (
           <ExplainBreakdownItem
             key={i}
