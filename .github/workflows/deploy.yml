@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  packages: read
   pages: write
   id-token: write
 
@@ -17,12 +18,19 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # @run-iq/plugin-fiscal is private: the default GITHUB_TOKEN cannot read it.
+      # Requires a repository secret RUN_IQ_PACKAGES_TOKEN (PAT with read:packages,
+      # from an account that can read Run-IQ/plugin-fiscal).
+      NODE_AUTH_TOKEN: ${{ secrets.RUN_IQ_PACKAGES_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          registry-url: https://npm.pkg.github.com
+          scope: '@run-iq'
           cache: npm
 
       - run: npm ci
