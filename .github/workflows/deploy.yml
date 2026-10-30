@@ -19,10 +19,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      # @run-iq/plugin-fiscal is private: the default GITHUB_TOKEN cannot read it.
-      # Requires a repository secret RUN_IQ_PACKAGES_TOKEN (PAT with read:packages,
-      # from an account that can read Run-IQ/plugin-fiscal).
-      NODE_AUTH_TOKEN: ${{ secrets.RUN_IQ_PACKAGES_TOKEN }}
+      # The @run-iq packages are private: grant this repo read access in each
+      # package's "Manage Actions access", or set RUN_IQ_PACKAGES_TOKEN (read:packages).
+      NODE_AUTH_TOKEN: ${{ secrets.RUN_IQ_PACKAGES_TOKEN || secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
