@@ -45,4 +45,4 @@ Every push to `master` builds the site and publishes `out/` to GitHub Pages (`.g
 
 ## License
 
-No license file yet.
+MIT License. See [LICENSE](LICENSE).
